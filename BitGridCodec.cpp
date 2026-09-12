@@ -6,25 +6,6 @@
 
 using namespace std;
 
-BitGridCodec::BitGridCodec()
-{
-    inputStr = "";
-    populateBinaryVector();
-    bitGrid = "";
-}
-
-// string BitGridCodec::reverseStr(const string &str)
-// {
-//     string reversedStr = "";
-
-//     for (size_t i = str.size(); i-- > 0;)
-//     {
-//         reversedStr += str[i];
-//     }
-
-//     return reversedStr;
-// }
-
 string BitGridCodec::intToBinaryString(int num, size_t width)
 {
     string binaryStr(width, '0');
@@ -36,9 +17,8 @@ string BitGridCodec::intToBinaryString(int num, size_t width)
         num /= 2;
     }
 
-    // note, if num > 0 at this point, the size  
+    // note, if num > 0 at this point, the size
     // of width wasn't sufficient to convert num
-
     return binaryStr;
 }
 
@@ -52,7 +32,7 @@ string BitGridCodec::charToBinaryString(char character)
 string BitGridCodec::textToBinaryString(const string &str)
 {
     string binaryStr;
-    // we know each char will produce 8 chars 
+    // we know each char will produce 8 chars
     binaryStr.reserve(str.size() * 8);
 
     for (char character : str)
@@ -84,47 +64,43 @@ char BitGridCodec::binaryStringToChar(const string &binary)
     return static_cast<char>(binaryStringToInt(binary));
 }
 
-void BitGridCodec::populateBinaryVector()
+void BitGridCodec::buildBitStream()
 {
-    size_t inputSize = inputStr.size();
-    binaryVector.resize(inputSize);
-
-    for (size_t i = 0; i < inputSize; i++)
+    bitStream.clear();
+    for (size_t i = 0; i < inputStr.size(); i++)
     {
-        binaryVector.at(i) = charToBinaryString(inputStr[i]);
+        bitStream += charToBinaryString(inputStr[i]);
     }
 }
 
-string BitGridCodec::binaryVectorToStr()
+int BitGridCodec::calculateChecksum()
 {
-    string binaryStr = "";
+    int checksum = 0;
 
-    for (size_t i = 0; i < binaryVector.size(); i++)
+    for (size_t i = 0; i < inputStr.size(); i++)
     {
-        binaryStr += binaryVector[i];
+        int charValue = static_cast<int>(inputStr[i]);
+        checksum = (checksum + (charValue * (i + 1))) % 256;
     }
 
-    return binaryStr;
+    return checksum;
+}
+
+string BitGridCodec::buildHeader()
+{
+    string inputStrSizeBinary = intToBinaryString(inputStr.size(), 16);
+    string checksumBinary = intToBinaryString(calculateChecksum(), 16);
+
+    // 32 char for signature - 16 char for input size - 16 char for the checksum;
+    return textToBinaryString(bitGridSignature) + inputStrSizeBinary + checksumBinary;
 }
 
 string BitGridCodec::constructBitGrid()
 {
-    // ---------------------- header for the bit grid ----------------------
+    // put together the entire bit info
+    string binaryStr = buildHeader() + bitStream;
 
-    string header = "";
-
-    int inputStrSize = inputStr.size();
-    string inputStrSizeBinary = intToBinaryString(inputStrSize, 16);
-
-    int checksum = checksumMaker(inputStr);
-    string checksumBinary = intToBinaryString(checksum, 16);
-
-    // 32b sig - 16b input size - 16b checksum;
-    header += textToBinaryString(bitGridSignature) + inputStrSizeBinary + checksumBinary;
-
-    // ----------------------------------------------------------------------
-
-    string binaryStr = header + binaryVectorToStr();
+    // find grid's dimensions
     int totalNumBits = static_cast<int>(binaryStr.size());
     int gridDimensions = 1;
 
@@ -135,6 +111,7 @@ string BitGridCodec::constructBitGrid()
 
     gridDimensions += 2;
 
+    // reset bitGrid then build it
     bitGrid = "";
     size_t idx = 0;
 
@@ -194,6 +171,13 @@ string BitGridCodec::constructBitGrid()
     return bitGrid;
 }
 
+void BitGridCodec::setInputStr(const string &inputStr)
+{
+    this->inputStr = inputStr;
+    buildBitStream();
+    bitGrid = constructBitGrid();
+}
+
 string BitGridCodec::decodeBitGrid(const string &bitGrid)
 {
     string binaryStr = "";
@@ -228,22 +212,6 @@ string BitGridCodec::decodeBitGrid(const string &bitGrid)
     return decodedMessage;
 }
 
-int BitGridCodec::checksumMaker(const string &inputStr)
-{
-    int checksum = 0;
-
-    for (size_t i = 0; i < inputStr.size(); i++)
-    {
-        int charValue = static_cast<int>(inputStr[i]);
-        int signatureValue = bitGridSignature[i % bitGridSignature.size()];
-
-        checksum += (charValue * (i + 1)) + signatureValue;
-        checksum = checksum % 256;
-    }
-
-    return checksum;
-}
-
 void BitGridCodec::downloadBitGrid()
 {
     ofstream bitGridFile("bitGrid.txt");
@@ -261,13 +229,6 @@ void BitGridCodec::downloadBitGrid()
              << "Please try downloading the bit grid again\n"
              << endl;
     }
-}
-
-void BitGridCodec::setInputStr(const string &inputStr)
-{
-    this->inputStr = inputStr;
-    populateBinaryVector();
-    bitGrid = constructBitGrid();
 }
 
 void BitGridCodec::run()
@@ -309,10 +270,12 @@ void BitGridCodec::run()
                                      "mixed with the HABG signature. This helps detect if the message\n"
                                      "changes while being encoded or decoded.";
 
-            cout << "Input checksum: " << checksumMaker(inputStr) << endl;
-            cout << "Bit grid checksum: " << checksumMaker(decodeBitGrid(bitGrid)) << endl;
+            cout << "Input checksum: " << calculateChecksum() << endl;
+            cout << "Bit grid checksum: " << calculateChecksum() << endl;
 
-            if (checksumMaker(decodeBitGrid(bitGrid)) == checksumMaker(inputStr))
+            // THIS PART MAKES NO SENSE
+
+            if (calculateChecksum() == calculateChecksum())
             {
                 cout << "The checksums match, so the bit grid is valid." << endl;
             }
