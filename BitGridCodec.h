@@ -5,29 +5,29 @@
 
 class BitGridCodec
 {
-public:
+  public:
     BitGridCodec();
 
-    std::string reverseStr(std::string strToReverse);
+    std::string reverseStr(const std::string &str);
     std::string charToBinary(char character);
-    std::string stringToBinary(std::string str);
-    int binaryToInt(std::string binary);
-    char binaryToChar(std::string binary);
+    std::string stringToBinary(const std::string &str);
+    int binaryToInt(const std::string &binary);
+    char binaryToChar(const std::string &binary);
     std::string intToFixedBinary(int num, int bits);
 
-    std::vector<std::string> populateBinaryVector();
+    void populateBinaryVector();
     std::string binaryVectorToStr();
     std::string constructBitGrid();
-    std::string decodeBitGrid(std::string qrCode);
+    std::string decodeBitGrid(const std::string &bitGrid);
     void downloadBitGrid();
 
-    int checksumMaker(std::string inputStr);
+    int checksumMaker(const std::string &inputStr);
 
-    void setInputStr(std::string inputStr);
+    void setInputStr(const std::string &inputStr);
 
     void run();
 
-private:
+  private:
     std::string inputStr;
     std::vector<std::string> binaryVector;
     std::string bitGrid;

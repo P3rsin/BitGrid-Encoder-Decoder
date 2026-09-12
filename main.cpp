@@ -4,7 +4,8 @@
 
 using namespace std;
 
-int main() {
+int main()
+{
     BitGridCodec bitGridCodec = BitGridCodec();
     bitGridCodec.run();
 }

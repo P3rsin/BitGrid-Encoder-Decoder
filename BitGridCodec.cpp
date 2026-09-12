@@ -9,17 +9,17 @@ using namespace std;
 BitGridCodec::BitGridCodec()
 {
     inputStr = "";
-    binaryVector = populateBinaryVector();
+    populateBinaryVector();
     bitGrid = "";
 }
 
-string BitGridCodec::reverseStr(string strToReverse)
+string BitGridCodec::reverseStr(const string &str)
 {
     string reversedStr = "";
 
-    for (int i = strToReverse.size() - 1; i >= 0; i--)
+    for (size_t i = str.size(); i-- > 0;)
     {
-        reversedStr += strToReverse[i];
+        reversedStr += str[i];
     }
 
     return reversedStr;
@@ -27,30 +27,25 @@ string BitGridCodec::reverseStr(string strToReverse)
 
 string BitGridCodec::charToBinary(char character)
 {
-    int asciiValue = int(character);
+    // we want char unsigned (0 - 255) to perform our conversion
+    unsigned char asciiValue = static_cast<unsigned char>(character);
+    string binaryStr(8, '0');
 
-    string binary = "";
-
-    while (asciiValue != 0)
+    for (size_t i = 8; i-- > 0;)
     {
-        int x = asciiValue % 2;
-        asciiValue /= 2;
-        binary += to_string(x);
+        binaryStr[i] = static_cast<char>('0' + (asciiValue % 2));
+        // in ASCII: '0' is 48 and '1' is 49 so ^ works out
+        asciiValue /= 2;  
     }
 
-    while (binary.size() < 8)
-    {
-        binary += "0";
-    }
-
-    return reverseStr(binary);
+    return binaryStr;
 }
 
-string BitGridCodec::stringToBinary(string str)
+string BitGridCodec::stringToBinary(const string &str)
 {
     string binaryStr = "";
 
-    for (int i = 0; i < str.size(); i++)
+    for (size_t i = 0; i < str.size(); i++)
     {
         binaryStr += charToBinary(str[i]);
     }
@@ -58,13 +53,12 @@ string BitGridCodec::stringToBinary(string str)
     return binaryStr;
 }
 
-int BitGridCodec::binaryToInt(string binary)
+int BitGridCodec::binaryToInt(const string &binary)
 {
     int value = 0;
-    int binarySize = binary.size();
     string reversedBinary = reverseStr(binary);
 
-    for (int i = 0; i < binarySize; i++)
+    for (size_t i = 0; i < binary.size(); i++)
     {
         if (reversedBinary[i] == '1')
         {
@@ -75,21 +69,20 @@ int BitGridCodec::binaryToInt(string binary)
     return value;
 }
 
-char BitGridCodec::binaryToChar(string binary)
+char BitGridCodec::binaryToChar(const string &binary)
 {
     int asciiValue = 0;
-    size_t binarySize = binary.size();
     string reversedBinary = reverseStr(binary);
 
-    for (size_t i = 0; i < binarySize; i++)
+    for (size_t i = 0; i < binary.size(); i++)
     {
         if (reversedBinary[i] == '1')
         {
-            asciiValue += static_cast<int>(pow(2, i));
+            asciiValue += pow(2, i);
         }
     }
 
-    return char(asciiValue);
+    return static_cast<char>(asciiValue);
 }
 
 string BitGridCodec::intToFixedBinary(int num, int bits)
@@ -111,17 +104,15 @@ string BitGridCodec::intToFixedBinary(int num, int bits)
     return reverseStr(binary);
 }
 
-vector<string> BitGridCodec::populateBinaryVector()
+void BitGridCodec::populateBinaryVector()
 {
     size_t inputSize = inputStr.size();
-    vector<string> binaryVector(inputSize);
+    binaryVector.resize(inputSize);
 
     for (size_t i = 0; i < inputSize; i++)
     {
         binaryVector.at(i) = charToBinary(inputStr[i]);
     }
-
-    return binaryVector;
 }
 
 string BitGridCodec::binaryVectorToStr()
@@ -223,13 +214,13 @@ string BitGridCodec::constructBitGrid()
     return bitGrid;
 }
 
-string BitGridCodec::decodeBitGrid(string bitGrid)
+string BitGridCodec::decodeBitGrid(const string &bitGrid)
 {
     string binaryStr = "";
     string zeroBlock = "▒▒";
     string oneBlock = "██";
 
-    for (int i = 0; i < bitGrid.size(); i++)
+    for (size_t i = 0; i < bitGrid.size(); i++)
     {
         if (bitGrid.substr(i, zeroBlock.size()) == zeroBlock)
         {
@@ -257,13 +248,13 @@ string BitGridCodec::decodeBitGrid(string bitGrid)
     return decodedMessage;
 }
 
-int BitGridCodec::checksumMaker(string inputStr)
+int BitGridCodec::checksumMaker(const string &inputStr)
 {
     int checksum = 0;
 
-    for (int i = 0; i < inputStr.size(); i++)
+    for (size_t i = 0; i < inputStr.size(); i++)
     {
-        int charValue = inputStr[i];
+        int charValue = static_cast<int>(inputStr[i]);
         int signatureValue = bitGridSignature[i % bitGridSignature.size()];
 
         checksum += (charValue * (i + 1)) + signatureValue;
@@ -292,10 +283,10 @@ void BitGridCodec::downloadBitGrid()
     }
 }
 
-void BitGridCodec::setInputStr(string inputStr)
+void BitGridCodec::setInputStr(const string &inputStr)
 {
     this->inputStr = inputStr;
-    binaryVector = populateBinaryVector();
+    populateBinaryVector();
     bitGrid = constructBitGrid();
 }
 
@@ -303,19 +294,17 @@ void BitGridCodec::run()
 {
     string usrInput;
 
-    const string title =
-        "-----------------------\n"
-        "    Bit Grid Manager   \n";
+    const string title = "-------------------------\n"
+                         " BitGrid Encoder/Decoder \n";
 
-    const string menuPrompt =
-        "-----------------------\n"
-        "[1] Generate a bit grid\n"
-        "[2] View my bit grid\n"
-        "[3] Download my bit grid\n"
-        "[4] Decode a bit grid\n"
-        "[5] About the project\n"
-        "[6] Exit\n"
-        "Choice: ";
+    const string menuPrompt = "-------------------------\n"
+                              "[1] Generate a bit grid\n"
+                              "[2] View my bit grid\n"
+                              "[3] Download my bit grid\n"
+                              "[4] Decode a bit grid\n"
+                              "[5] About the project\n"
+                              "[6] Exit\n"
+                              "Choice: ";
 
     cout << title << menuPrompt;
     cin >> usrInput;
@@ -332,15 +321,13 @@ void BitGridCodec::run()
             getline(cin, inputStr);
             setInputStr(inputStr);
 
-            cout << "\nYour bit grid is now:\n"
-                 << bitGrid;
+            cout << "\nYour bit grid is now:\n" << bitGrid;
 
-            string checkSumMessage =
-                "\nChecksum explanation:\n"
-                "This bit grid uses a position-weighted checksum.\n"
-                "Each character's ASCII value is multiplied by its position, then\n"
-                "mixed with the HABG signature. This helps detect if the message\n"
-                "changes while being encoded or decoded.";
+            string checkSumMessage = "\nChecksum explanation:\n"
+                                     "This bit grid uses a position-weighted checksum.\n"
+                                     "Each character's ASCII value is multiplied by its position, then\n"
+                                     "mixed with the HABG signature. This helps detect if the message\n"
+                                     "changes while being encoded or decoded.";
 
             cout << "Input checksum: " << checksumMaker(inputStr) << endl;
             cout << "Bit grid checksum: " << checksumMaker(decodeBitGrid(bitGrid)) << endl;
@@ -364,10 +351,8 @@ void BitGridCodec::run()
             }
             else
             {
-                cout << "Your current string:\n"
-                     << inputStr << endl;
-                cout << "\nYour bit grid is:\n"
-                     << bitGrid;
+                cout << "Your current string:\n" << inputStr << endl;
+                cout << "\nYour bit grid is:\n" << bitGrid;
             }
         }
         else if (usrInput == "3")
@@ -385,8 +370,7 @@ void BitGridCodec::run()
         {
             cout << "Note, you must type \"Done\" in a NEW LINE" << endl;
             cout << "once you've pasted the bit grid you want to" << endl;
-            cout << "decode. Please provide the bit grid:\n"
-                 << endl;
+            cout << "decode. Please provide the bit grid:\n" << endl;
 
             string line;
             string fullBitGrid = "";
@@ -407,25 +391,26 @@ void BitGridCodec::run()
         }
         else if (usrInput == "5")
         {
-            string projectInfo =
-                "Project Info:\n"
-                "This is a simple terminal-based QR Code Generator. The program takes a\n"
-                "user's string input, converts each character into binary, and displays\n"
-                "that binary data as a visual QR-style grid using shaded and filled blocks.\n"
-                "\n"
-                "The QR code also includes a small header before the message data. This\n"
-                "header stores the HAQR project signature, the length of the original\n"
-                "message, and a checksum. The signature helps identify the code as one\n"
-                "made by my program, while the message length tells the decoder how many\n"
-                "characters to read.\n"
-                "\n"
-                "The checksum is used to check whether the QR code was encoded and decoded\n"
-                "correctly. The program calculates a checksum from the original input, then\n"
-                "calculates another checksum from the decoded QR output. If both values\n"
-                "match, the program reports that the QR code is valid.\n"
-                "\n"
-                "Users can generate a QR code, view the current QR code, download it to a\n"
-                "text file, or paste a QR code back into the program to decode it.";
+            string projectInfo = "Project Info:\n"
+                                 "BitGrid Encoder/Decoder is a terminal-based program that encodes text into\n"
+                                 "a custom visual binary format. Each character in the input is converted\n"
+                                 "into an 8-bit binary representation, and the resulting data is displayed\n"
+                                 "as a two-dimensional grid using shaded and filled blocks.\n"
+                                 "\n"
+                                 "Each bit grid begins with a 64-bit header containing a 32-bit HABG format\n"
+                                 "signature, a 16-bit message length, and a 16-bit checksum. The signature\n"
+                                 "identifies the data as using the BitGrid format, while the message length\n"
+                                 "tells the decoder how much encoded message data to read.\n"
+                                 "\n"
+                                 "The checksum provides an integrity check for the encoded message. It is\n"
+                                 "calculated from the characters in the original input, their positions,\n"
+                                 "and the HABG signature. When a bit grid is decoded, the stored checksum\n"
+                                 "is compared with a checksum calculated from the decoded message. Matching\n"
+                                 "values indicate that the message was decoded without detected corruption.\n"
+                                 "\n"
+                                 "Users can encode text into a bit grid, view the current grid, save it to a\n"
+                                 "text file, or paste an existing BitGrid representation into the program\n"
+                                 "to decode it back into text.";
 
             cout << projectInfo << endl;
         }
@@ -434,8 +419,7 @@ void BitGridCodec::run()
             cout << "INVALID INPUT" << endl;
         }
 
-        cout << endl
-             << menuPrompt;
+        cout << endl << menuPrompt;
         cin >> usrInput;
     }
 }
