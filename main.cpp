@@ -1,10 +1,10 @@
 #include <iostream>
 
-#include "QRCodeManager.h"
+#include "BitGridCodec.h"
 
 using namespace std;
 
 int main() {
-    QRCodeManager qrCodeManager = QRCodeManager();
-    qrCodeManager.run();
+    BitGridCodec bitGridCodec = BitGridCodec();
+    bitGridCodec.run();
 }
