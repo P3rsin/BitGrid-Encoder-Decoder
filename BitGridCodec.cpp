@@ -25,45 +25,45 @@ BitGridCodec::BitGridCodec()
 //     return reversedStr;
 // }
 
-string BitGridCodec::intToFixedBinary(int num, size_t bits)
+string BitGridCodec::intToBinaryString(int num, size_t width)
 {
-    string binaryStr(bits, '0');
+    string binaryStr(width, '0');
 
-    for (size_t i = bits; i-- > 0;)
+    for (size_t i = width; i-- > 0;)
     {
         binaryStr[i] = static_cast<char>('0' + (num % 2));
         // in ASCII: '0' is 48 and '1' is 49 so ^ works out
         num /= 2;
     }
 
-    // note, if num > 0 at this point, the num  
-    // of bits wasn't sufficient to convert num
+    // note, if num > 0 at this point, the size  
+    // of width wasn't sufficient to convert num
 
     return binaryStr;
 }
 
-string BitGridCodec::charToBinary(char character)
+string BitGridCodec::charToBinaryString(char character)
 {
     // we want char unsigned (0 - 255) to perform our conversion
-    unsigned char asciiValue = static_cast<unsigned char>(character);
-    return intToFixedBinary(asciiValue, 8);
+    unsigned char value = static_cast<unsigned char>(character);
+    return intToBinaryString(value, 8);
 }
 
-string BitGridCodec::stringToBinary(const string &str)
+string BitGridCodec::textToBinaryString(const string &str)
 {
     string binaryStr;
-    // we know each char produces 8 chars 
+    // we know each char will produce 8 chars 
     binaryStr.reserve(str.size() * 8);
 
     for (char character : str)
     {
-        binaryStr += charToBinary(character);
+        binaryStr += charToBinaryString(character);
     }
 
     return binaryStr;
 }
 
-int BitGridCodec::binaryToInt(const string &binaryStr)
+int BitGridCodec::binaryStringToInt(const string &binaryStr)
 {
     int value = 0;
 
@@ -79,9 +79,9 @@ int BitGridCodec::binaryToInt(const string &binaryStr)
     return value;
 }
 
-char BitGridCodec::binaryToChar(const string &binary)
+char BitGridCodec::binaryStringToChar(const string &binary)
 {
-    return static_cast<char>(binaryToInt(binary));
+    return static_cast<char>(binaryStringToInt(binary));
 }
 
 void BitGridCodec::populateBinaryVector()
@@ -91,7 +91,7 @@ void BitGridCodec::populateBinaryVector()
 
     for (size_t i = 0; i < inputSize; i++)
     {
-        binaryVector.at(i) = charToBinary(inputStr[i]);
+        binaryVector.at(i) = charToBinaryString(inputStr[i]);
     }
 }
 
@@ -114,13 +114,13 @@ string BitGridCodec::constructBitGrid()
     string header = "";
 
     int inputStrSize = inputStr.size();
-    string inputStrSizeBinary = intToFixedBinary(inputStrSize, 16);
+    string inputStrSizeBinary = intToBinaryString(inputStrSize, 16);
 
     int checksum = checksumMaker(inputStr);
-    string checksumBinary = intToFixedBinary(checksum, 16);
+    string checksumBinary = intToBinaryString(checksum, 16);
 
     // 32b sig - 16b input size - 16b checksum;
-    header += stringToBinary(bitGridSignature) + inputStrSizeBinary + checksumBinary;
+    header += textToBinaryString(bitGridSignature) + inputStrSizeBinary + checksumBinary;
 
     // ----------------------------------------------------------------------
 
@@ -215,14 +215,14 @@ string BitGridCodec::decodeBitGrid(const string &bitGrid)
     }
 
     string header = binaryStr.substr(0, 64);
-    int inputSize = binaryToInt(header.substr(32, 16));
+    int inputSize = binaryStringToInt(header.substr(32, 16));
 
     string decodedMessage = "";
 
     for (int i = 64; i < 64 + (inputSize * 8); i += 8)
     {
         string charBinary = binaryStr.substr(i, 8);
-        decodedMessage += binaryToChar(charBinary);
+        decodedMessage += binaryStringToChar(charBinary);
     }
 
     return decodedMessage;

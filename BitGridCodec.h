@@ -9,13 +9,13 @@ class BitGridCodec
     BitGridCodec();
 
     //std::string reverseStr(const std::string &str);
-    
-    std::string intToFixedBinary(int num, size_t bits);
-    std::string charToBinary(char character);
-    std::string stringToBinary(const std::string &str);
 
-    int binaryToInt(const std::string &binary);
-    char binaryToChar(const std::string &binary);
+    std::string intToBinaryString(int num, size_t width);
+    std::string charToBinaryString(char character);
+    std::string textToBinaryString(const std::string &text);
+
+    int binaryStringToInt(const std::string &binary);
+    char binaryStringToChar(const std::string &binary);
     
     void populateBinaryVector();
     std::string binaryVectorToStr();
