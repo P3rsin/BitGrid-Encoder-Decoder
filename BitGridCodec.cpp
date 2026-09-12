@@ -35,7 +35,7 @@ string BitGridCodec::charToBinary(char character)
     {
         binaryStr[i] = static_cast<char>('0' + (asciiValue % 2));
         // in ASCII: '0' is 48 and '1' is 49 so ^ works out
-        asciiValue /= 2;  
+        asciiValue /= 2;
     }
 
     return binaryStr;
@@ -43,26 +43,28 @@ string BitGridCodec::charToBinary(char character)
 
 string BitGridCodec::stringToBinary(const string &str)
 {
-    string binaryStr = "";
+    string binaryStr;
+    // we know each char produces 8 chars 
+    binaryStr.reserve(str.size() * 8);
 
-    for (size_t i = 0; i < str.size(); i++)
+    for (char character : str)
     {
-        binaryStr += charToBinary(str[i]);
+        binaryStr += charToBinary(character);
     }
 
     return binaryStr;
 }
 
-int BitGridCodec::binaryToInt(const string &binary)
+int BitGridCodec::binaryToInt(const string &binaryStr)
 {
     int value = 0;
-    string reversedBinary = reverseStr(binary);
 
-    for (size_t i = 0; i < binary.size(); i++)
+    for (size_t i = 0; i < binaryStr.size(); i++)
     {
-        if (reversedBinary[i] == '1')
+        if (binaryStr[i] == '1')
         {
-            value += pow(2, i);
+            value += pow(2, binaryStr.size() - 1 - i);
+            // would be nice to avoid the floating point here
         }
     }
 
@@ -71,18 +73,7 @@ int BitGridCodec::binaryToInt(const string &binary)
 
 char BitGridCodec::binaryToChar(const string &binary)
 {
-    int asciiValue = 0;
-    string reversedBinary = reverseStr(binary);
-
-    for (size_t i = 0; i < binary.size(); i++)
-    {
-        if (reversedBinary[i] == '1')
-        {
-            asciiValue += pow(2, i);
-        }
-    }
-
-    return static_cast<char>(asciiValue);
+    return static_cast<char>(binaryToInt(binary));
 }
 
 string BitGridCodec::intToFixedBinary(int num, int bits)
