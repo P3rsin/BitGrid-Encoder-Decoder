@@ -13,32 +13,40 @@ BitGridCodec::BitGridCodec()
     bitGrid = "";
 }
 
-string BitGridCodec::reverseStr(const string &str)
-{
-    string reversedStr = "";
+// string BitGridCodec::reverseStr(const string &str)
+// {
+//     string reversedStr = "";
 
-    for (size_t i = str.size(); i-- > 0;)
+//     for (size_t i = str.size(); i-- > 0;)
+//     {
+//         reversedStr += str[i];
+//     }
+
+//     return reversedStr;
+// }
+
+string BitGridCodec::intToFixedBinary(int num, size_t bits)
+{
+    string binaryStr(bits, '0');
+
+    for (size_t i = bits; i-- > 0;)
     {
-        reversedStr += str[i];
+        binaryStr[i] = static_cast<char>('0' + (num % 2));
+        // in ASCII: '0' is 48 and '1' is 49 so ^ works out
+        num /= 2;
     }
 
-    return reversedStr;
+    // note, if num > 0 at this point, the num  
+    // of bits wasn't sufficient to convert num
+
+    return binaryStr;
 }
 
 string BitGridCodec::charToBinary(char character)
 {
     // we want char unsigned (0 - 255) to perform our conversion
     unsigned char asciiValue = static_cast<unsigned char>(character);
-    string binaryStr(8, '0');
-
-    for (size_t i = 8; i-- > 0;)
-    {
-        binaryStr[i] = static_cast<char>('0' + (asciiValue % 2));
-        // in ASCII: '0' is 48 and '1' is 49 so ^ works out
-        asciiValue /= 2;
-    }
-
-    return binaryStr;
+    return intToFixedBinary(asciiValue, 8);
 }
 
 string BitGridCodec::stringToBinary(const string &str)
@@ -74,25 +82,6 @@ int BitGridCodec::binaryToInt(const string &binaryStr)
 char BitGridCodec::binaryToChar(const string &binary)
 {
     return static_cast<char>(binaryToInt(binary));
-}
-
-string BitGridCodec::intToFixedBinary(int num, int bits)
-{
-    string binary = "";
-
-    while (num != 0)
-    {
-        int x = num % 2;
-        num /= 2;
-        binary += to_string(x);
-    }
-
-    while (binary.size() < bits)
-    {
-        binary += "0";
-    }
-
-    return reverseStr(binary);
 }
 
 void BitGridCodec::populateBinaryVector()

@@ -8,13 +8,15 @@ class BitGridCodec
   public:
     BitGridCodec();
 
-    std::string reverseStr(const std::string &str);
+    //std::string reverseStr(const std::string &str);
+    
+    std::string intToFixedBinary(int num, size_t bits);
     std::string charToBinary(char character);
     std::string stringToBinary(const std::string &str);
+
     int binaryToInt(const std::string &binary);
     char binaryToChar(const std::string &binary);
-    std::string intToFixedBinary(int num, int bits);
-
+    
     void populateBinaryVector();
     std::string binaryVectorToStr();
     std::string constructBitGrid();
