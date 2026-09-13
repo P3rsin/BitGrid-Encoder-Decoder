@@ -64,13 +64,15 @@ char BitGridCodec::binaryStringToChar(const string &binary)
     return static_cast<char>(binaryStringToInt(binary));
 }
 
-void BitGridCodec::buildBitStream()
-{
-    bitStream.clear();
-    for (size_t i = 0; i < inputStr.size(); i++)
+string BitGridCodec::binaryStringToText(const string &binary) {
+    string text;
+
+    for (size_t i = 0; i < binary.size(); i += 8)
     {
-        bitStream += charToBinaryString(inputStr[i]);
+        text += binaryStringToChar(binary.substr(i, i + 8));
     }
+    
+    return text;
 }
 
 int BitGridCodec::calculateChecksum()
@@ -97,57 +99,46 @@ string BitGridCodec::buildHeader()
 
 string BitGridCodec::constructBitGrid()
 {
-    // put together the entire bit info
-    string binaryStr = buildHeader() + bitStream;
+    string encodedBits = buildHeader() + bitStream;
+    int totalBitCount = static_cast<int>(encodedBits.size());
+    int gridSize = static_cast<int>(ceil(sqrt(totalBitCount))) + 2;
 
-    // find grid's dimensions
-    int totalNumBits = static_cast<int>(binaryStr.size());
-    int gridDimensions = 1;
+    bitGrid.clear();
+    size_t bitIndex = 0;
 
-    while (pow(gridDimensions, 2) < totalNumBits)
+    for (int row = 0; row < gridSize; row++)
     {
-        gridDimensions++;
-    }
-
-    gridDimensions += 2;
-
-    // reset bitGrid then build it
-    bitGrid = "";
-    size_t idx = 0;
-
-    for (int i = 0; i < gridDimensions; i++)
-    {
-        for (int j = 0; j < gridDimensions; j++)
+        for (int col = 0; col < gridSize; col++)
         {
-            if (i == 0 && j == 0)
+            if (row == 0 && col == 0)
             {
                 bitGrid += "╔";
             }
-            else if (i == 0 && j == gridDimensions - 1)
+            else if (row == 0 && col == gridSize - 1)
             {
                 bitGrid += "╗";
             }
-            else if (i == gridDimensions - 1 && j == 0)
+            else if (row == gridSize - 1 && col == 0)
             {
                 bitGrid += "╚";
             }
-            else if (i == gridDimensions - 1 && j == gridDimensions - 1)
+            else if (row == gridSize - 1 && col == gridSize - 1)
             {
                 bitGrid += "╝";
             }
-            else if (i == 0 || i == gridDimensions - 1)
+            else if (row == 0 || row == gridSize - 1)
             {
                 bitGrid += "══";
             }
-            else if (j == 0 || j == gridDimensions - 1)
+            else if (col == 0 || col == gridSize - 1)
             {
                 bitGrid += "║";
             }
             else
             {
-                if (idx < totalNumBits)
+                if (bitIndex < totalBitCount)
                 {
-                    if (binaryStr[idx] == '1')
+                    if (encodedBits[bitIndex] == '1')
                     {
                         bitGrid += "██";
                     }
@@ -161,7 +152,7 @@ string BitGridCodec::constructBitGrid()
                     bitGrid += "██";
                 }
 
-                idx++;
+                bitIndex++;
             }
         }
 
@@ -174,13 +165,13 @@ string BitGridCodec::constructBitGrid()
 void BitGridCodec::setInputStr(const string &inputStr)
 {
     this->inputStr = inputStr;
-    buildBitStream();
+    bitStream = textToBinaryString(inputStr);
     bitGrid = constructBitGrid();
 }
 
-string BitGridCodec::decodeBitGrid(const string &bitGrid)
+string BitGridCodec::bitGridToBinaryStr(const string &bitGrid)
 {
-    string binaryStr = "";
+    string binaryStr;
     string zeroBlock = "▒▒";
     string oneBlock = "██";
 
@@ -198,10 +189,15 @@ string BitGridCodec::decodeBitGrid(const string &bitGrid)
         }
     }
 
+    return binaryStr;
+}
+
+string BitGridCodec::decodeBitGrid(const string &bitGrid)
+{
+    string binaryStr = bitGridToBinaryStr(bitGrid);
     string header = binaryStr.substr(0, 64);
     int inputSize = binaryStringToInt(header.substr(32, 16));
-
-    string decodedMessage = "";
+    string decodedMessage;
 
     for (int i = 64; i < 64 + (inputSize * 8); i += 8)
     {
@@ -212,23 +208,19 @@ string BitGridCodec::decodeBitGrid(const string &bitGrid)
     return decodedMessage;
 }
 
-void BitGridCodec::downloadBitGrid()
+void BitGridCodec::saveBitGrid()
 {
     ofstream bitGridFile("bitGrid.txt");
 
-    if (bitGridFile.is_open())
+    if (!bitGridFile.is_open())
     {
-        bitGridFile << bitGrid;
-        bitGridFile.close();
+        cout << "An error occurred while saving the grid.\n"
+             << "Please try saving the bit grid again\n";
+        return;
+    }
 
-        cout << "Bit grid downloaded successfully" << endl;
-    }
-    else
-    {
-        cout << "An error occurred while downloading.\n"
-             << "Please try downloading the bit grid again\n"
-             << endl;
-    }
+    bitGridFile << bitGrid;
+    cout << "Bit grid downloaded successfully" << endl;
 }
 
 void BitGridCodec::run()
@@ -263,19 +255,13 @@ void BitGridCodec::run()
             setInputStr(inputStr);
 
             cout << "\nYour bit grid is now:\n" << bitGrid;
+            cout << "The checksum of your orginal input: " << calculateChecksum() << endl;
 
-            string checkSumMessage = "\nChecksum explanation:\n"
-                                     "This bit grid uses a position-weighted checksum.\n"
-                                     "Each character's ASCII value is multiplied by its position, then\n"
-                                     "mixed with the HABG signature. This helps detect if the message\n"
-                                     "changes while being encoded or decoded.";
+            // is this a correct checksum implementation
+            int bitGridChecksum = binaryStringToInt(bitGridToBinaryStr(bitGrid).substr(48, 16));
+            cout << "The constructed bit grid checksum: " << bitGridChecksum << endl;
 
-            cout << "Input checksum: " << calculateChecksum() << endl;
-            cout << "Bit grid checksum: " << calculateChecksum() << endl;
-
-            // THIS PART MAKES NO SENSE
-
-            if (calculateChecksum() == calculateChecksum())
+            if (calculateChecksum() == bitGridChecksum)
             {
                 cout << "The checksums match, so the bit grid is valid." << endl;
             }
@@ -283,8 +269,6 @@ void BitGridCodec::run()
             {
                 cout << "The checksums do not match, so the bit grid may be invalid." << endl;
             }
-
-            cout << checkSumMessage << endl;
         }
         else if (usrInput == "2")
         {
@@ -306,7 +290,7 @@ void BitGridCodec::run()
             }
             else
             {
-                downloadBitGrid();
+                saveBitGrid();
             }
         }
         else if (usrInput == "4")
@@ -316,7 +300,7 @@ void BitGridCodec::run()
             cout << "decode. Please provide the bit grid:\n" << endl;
 
             string line;
-            string fullBitGrid = "";
+            string fullBitGrid;
 
             while (true)
             {
