@@ -64,24 +64,25 @@ char BitGridCodec::binaryStringToChar(const string &binary)
     return static_cast<char>(binaryStringToInt(binary));
 }
 
-string BitGridCodec::binaryStringToText(const string &binary) {
+string BitGridCodec::binaryStringToText(const string &binary)
+{
     string text;
 
     for (size_t i = 0; i < binary.size(); i += 8)
     {
         text += binaryStringToChar(binary.substr(i, i + 8));
     }
-    
+
     return text;
 }
 
-int BitGridCodec::calculateChecksum()
+int BitGridCodec::calculateChecksum(const string &text)
 {
     int checksum = 0;
 
-    for (size_t i = 0; i < inputStr.size(); i++)
+    for (size_t i = 0; i < text.size(); i++)
     {
-        int charValue = static_cast<int>(inputStr[i]);
+        int charValue = static_cast<unsigned char>(text[i]);
         checksum = (checksum + (charValue * (i + 1))) % 256;
     }
 
@@ -91,7 +92,7 @@ int BitGridCodec::calculateChecksum()
 string BitGridCodec::buildHeader()
 {
     string inputStrSizeBinary = intToBinaryString(inputStr.size(), 16);
-    string checksumBinary = intToBinaryString(calculateChecksum(), 16);
+    string checksumBinary = intToBinaryString(calculateChecksum(inputStr), 16);
 
     // 32 char for signature - 16 char for input size - 16 char for the checksum;
     return textToBinaryString(bitGridSignature) + inputStrSizeBinary + checksumBinary;
@@ -255,15 +256,15 @@ void BitGridCodec::run()
             setInputStr(inputStr);
 
             cout << "\nYour bit grid is now:\n" << bitGrid;
-            cout << "The checksum of your orginal input: " << calculateChecksum() << endl;
+            cout << "The checksum of your orginal input: " << calculateChecksum(inputStr) << endl;
 
-            // is this a correct checksum implementation
-            int bitGridChecksum = binaryStringToInt(bitGridToBinaryStr(bitGrid).substr(48, 16));
-            cout << "The constructed bit grid checksum: " << bitGridChecksum << endl;
+            string gridBinaryStr = bitGridToBinaryStr(bitGrid);
+            int extractedChecksum = binaryStringToInt(gridBinaryStr.substr(48, 16));
+            cout << "The checksum stored in the bit grid: " << extractedChecksum << endl;
 
-            if (calculateChecksum() == bitGridChecksum)
+            if (calculateChecksum(decodeBitGrid(bitGrid)) == extractedChecksum)
             {
-                cout << "The checksums match, so the bit grid is valid." << endl;
+                cout << "The checksums match, no corruption was detected." << endl;
             }
             else
             {

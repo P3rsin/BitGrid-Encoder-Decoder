@@ -15,8 +15,8 @@ class BitGridCodec
     std::string binaryStringToText(const std::string &binary);
 
     void setInputStr(const std::string &inputStr);
+    int calculateChecksum(const std::string &text);
     std::string buildHeader();
-    int calculateChecksum();
     std::string constructBitGrid();
 
     std::string bitGridToBinaryStr(const std::string &bitGrid);
@@ -26,9 +26,9 @@ class BitGridCodec
     void run();
 
   private:
-    std::string inputStr;    // user input text
-    std::string bitStream;   // continuous binary representation of inputStr
-    std::string bitGrid;     // string for the actual grid/image
+    std::string inputStr;  // user input text
+    std::string bitStream; // continuous binary representation of inputStr
+    std::string bitGrid;   // string for the actual grid/image
 
     const std::string bitGridSignature = "HABG";
 };
