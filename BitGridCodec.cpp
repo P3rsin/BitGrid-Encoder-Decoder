@@ -92,7 +92,7 @@ string BitGridCodec::buildHeader()
     string inputStrSizeBinary = intToBinaryString(inputStr.size(), 16);
     string checksumBinary = intToBinaryString(calculateChecksum(inputStr), 16);
 
-    // 32 char for signature - 16 char for input size - 16 char for the checksum;
+    // 32 bits for signature - 16 bits for input size - 16 bits for checksum
     return textToBinaryString(bitGridSignature) + inputStrSizeBinary + checksumBinary;
 }
 
@@ -193,19 +193,35 @@ string BitGridCodec::bitGridToBinaryStr(const string &bitGrid)
 string BitGridCodec::decodeBitGrid(const string &bitGrid)
 {
     string binaryStr = bitGridToBinaryStr(bitGrid);
-    if (binaryStr.size() < 64 || binaryStringToText(binaryStr.substr(0, 32)) != bitGridSignature)
+
+    if (binaryStr.size() < 64)
     {
-        return "ERROR - wrong format";
+        return "ERROR - missing or incomplete header";
     }
 
     string header = binaryStr.substr(0, 64);
-    int inputSize = binaryStringToInt(header.substr(32, 16));
-    string decodedMessage;
 
-    for (int i = 64; i < 64 + (inputSize * 8); i += 8)
+    if (binaryStringToText(header.substr(0, 32)) != bitGridSignature)
     {
-        string charBinary = binaryStr.substr(i, 8);
-        decodedMessage += binaryStringToChar(charBinary);
+        return "ERROR - invalid BitGrid signature";
+    }
+
+    size_t payloadBitCount = static_cast<size_t>(binaryStringToInt(header.substr(32, 16))) * 8;
+
+    if (binaryStr.size() < 64 + payloadBitCount)
+    {
+        return "ERROR - missing data";
+    }
+
+    string payloadBits = binaryStr.substr(64, payloadBitCount);
+    string decodedMessage = binaryStringToText(payloadBits);
+
+    int extractedChecksum = binaryStringToInt(header.substr(48, 16));
+    int recalculatedChecksum = calculateChecksum(decodedMessage);
+
+    if (extractedChecksum != recalculatedChecksum)
+    {
+        return "ERROR - checksum mismatch";
     }
 
     return decodedMessage;
