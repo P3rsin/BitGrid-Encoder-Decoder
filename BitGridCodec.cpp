@@ -163,6 +163,11 @@ string BitGridCodec::constructBitGrid()
 
 void BitGridCodec::setInputStr(const string &inputStr)
 {
+    if (inputStr.size() > 65535) {
+        cout << "ERROR - input must be 65535 characters or fewer\n";
+        return;
+    }
+
     this->inputStr = inputStr;
     bitGrid = constructBitGrid();
 }
