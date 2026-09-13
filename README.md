@@ -17,13 +17,13 @@ Recommended:
    - decoding a BitGrid back into text
 3. Save it as assets/bitgrid-demo.gif.
 4. Uncomment this:
+-->
 
 <p align="center">
   <img src="assets/bitgrid-demo.gif"
        alt="BitGrid Encoder/Decoder demonstration"
        width="850">
 </p>
--->
 
 ## Overview
 
