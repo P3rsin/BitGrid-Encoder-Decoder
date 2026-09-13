@@ -269,9 +269,7 @@ decoded text.
 - Text processing is byte-oriented rather than Unicode-code-point-aware.
 - BitGrid is a custom format and is not compatible with QR Code readers.
 
-### Author - Haroon Awan
+## Author
 
-<!-- Optional:
-[GitHub](https://github.com/P3rsin) ·
-[LinkedIn](YOUR_LINKEDIN_URL)
--->
+**Haroon Awan**  
+[GitHub](https://github.com/P3rsin)
