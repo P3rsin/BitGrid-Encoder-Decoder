@@ -274,21 +274,13 @@ void BitGridCodec::run()
             setInputStr(inputStr);
 
             cout << "\nYour bit grid is now:\n" << bitGrid;
-            cout << "The checksum of your original input: " << calculateChecksum(inputStr) << endl;
 
             string gridBinaryStr = bitGridToBinaryStr(bitGrid);
             int extractedChecksum = binaryStringToInt(gridBinaryStr.substr(48, 16));
             int recalculatedChecksum = calculateChecksum(decodeBitGrid(bitGrid));
-            cout << "The checksum stored in the bit grid: " << extractedChecksum << endl;
 
-            if (recalculatedChecksum == extractedChecksum)
-            {
-                cout << "The checksums match, no corruption was detected." << endl;
-            }
-            else
-            {
-                cout << "The checksums do not match, so the bit grid may be invalid." << endl;
-            }
+            cout << "The checksum stored in the bit grid: " << extractedChecksum << endl;
+            cout << "The recalculated checksum from the grid data: " << recalculatedChecksum << endl;
         }
         else if (usrInput == "2")
         {
@@ -345,19 +337,21 @@ void BitGridCodec::run()
                                  "as a two-dimensional grid using shaded and filled blocks.\n"
                                  "\n"
                                  "Each bit grid begins with a 64-bit header containing a 32-bit HABG format\n"
-                                 "signature, a 16-bit message length, and a 16-bit checksum field. The\n"
-                                 "signature identifies the data as using the BitGrid format, while the\n"
-                                 "message length tells the decoder how much encoded message data to read.\n"
+                                 "signature, a 16-bit message length, and a 16-bit checksum. The signature\n"
+                                 "identifies the data as using the BitGrid format, while the message length\n"
+                                 "tells the decoder exactly how much encoded message data to read.\n"
                                  "\n"
                                  "The checksum provides a basic integrity check for the encoded message. It\n"
                                  "is calculated from each character's numeric value and position in the\n"
-                                 "original input, then stored in the BitGrid header. During validation, the\n"
-                                 "stored checksum is compared with a checksum recalculated from the decoded\n"
-                                 "message. Matching values indicate that no corruption was detected.\n"
+                                 "original input, then stored in the BitGrid header. During decoding, the\n"
+                                 "program validates the HABG signature, verifies that the expected message\n"
+                                 "data is present, and compares the stored checksum with one recalculated\n"
+                                 "from the decoded message. A matching checksum indicates that no corruption\n"
+                                 "was detected.\n"
                                  "\n"
                                  "Users can encode text into a bit grid, view the current grid, save it to a\n"
                                  "text file, or paste an existing BitGrid representation into the program\n"
-                                 "to decode it back into text.";
+                                 "to validate and decode it back into text.";
 
             cout << projectInfo << endl;
         }
