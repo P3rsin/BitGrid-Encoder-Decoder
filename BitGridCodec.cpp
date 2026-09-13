@@ -17,14 +17,11 @@ string BitGridCodec::intToBinaryString(int num, size_t width)
         num /= 2;
     }
 
-    // note, if num > 0 at this point, the size
-    // of width wasn't sufficient to convert num
     return binaryStr;
 }
 
 string BitGridCodec::charToBinaryString(char character)
 {
-    // we want char unsigned (0 - 255) to perform our conversion
     unsigned char value = static_cast<unsigned char>(character);
     return intToBinaryString(value, 8);
 }
@@ -32,7 +29,6 @@ string BitGridCodec::charToBinaryString(char character)
 string BitGridCodec::textToBinaryString(const string &str)
 {
     string binaryStr;
-    // we know each char will produce 8 chars
     binaryStr.reserve(str.size() * 8);
 
     for (char character : str)
@@ -49,10 +45,11 @@ int BitGridCodec::binaryStringToInt(const string &binaryStr)
 
     for (size_t i = 0; i < binaryStr.size(); i++)
     {
+        value *= 2;
+
         if (binaryStr[i] == '1')
         {
-            value += pow(2, binaryStr.size() - 1 - i);
-            // would be nice to avoid the floating point here
+            value++;
         }
     }
 
@@ -70,7 +67,7 @@ string BitGridCodec::binaryStringToText(const string &binary)
 
     for (size_t i = 0; i < binary.size(); i += 8)
     {
-        text += binaryStringToChar(binary.substr(i, i + 8));
+        text += binaryStringToChar(binary.substr(i, 8));
     }
 
     return text;
@@ -83,7 +80,8 @@ int BitGridCodec::calculateChecksum(const string &text)
     for (size_t i = 0; i < text.size(); i++)
     {
         int charValue = static_cast<unsigned char>(text[i]);
-        checksum = (checksum + (charValue * (i + 1))) % 256;
+        checksum = (checksum + (charValue * (i + 1))) % 65536;
+        // 16 bits are allocated for the checksum 2^16 = 65536
     }
 
     return checksum;
@@ -100,8 +98,8 @@ string BitGridCodec::buildHeader()
 
 string BitGridCodec::constructBitGrid()
 {
-    string encodedBits = buildHeader() + bitStream;
-    int totalBitCount = static_cast<int>(encodedBits.size());
+    string encodedBits = buildHeader() + textToBinaryString(inputStr);
+    size_t totalBitCount = encodedBits.size();
     int gridSize = static_cast<int>(ceil(sqrt(totalBitCount))) + 2;
 
     bitGrid.clear();
@@ -166,7 +164,6 @@ string BitGridCodec::constructBitGrid()
 void BitGridCodec::setInputStr(const string &inputStr)
 {
     this->inputStr = inputStr;
-    bitStream = textToBinaryString(inputStr);
     bitGrid = constructBitGrid();
 }
 
@@ -196,6 +193,11 @@ string BitGridCodec::bitGridToBinaryStr(const string &bitGrid)
 string BitGridCodec::decodeBitGrid(const string &bitGrid)
 {
     string binaryStr = bitGridToBinaryStr(bitGrid);
+    if (binaryStr.size() < 64 || binaryStringToText(binaryStr.substr(0, 32)) != bitGridSignature)
+    {
+        return "ERROR - wrong format";
+    }
+
     string header = binaryStr.substr(0, 64);
     int inputSize = binaryStringToInt(header.substr(32, 16));
     string decodedMessage;
@@ -221,7 +223,7 @@ void BitGridCodec::saveBitGrid()
     }
 
     bitGridFile << bitGrid;
-    cout << "Bit grid downloaded successfully" << endl;
+    cout << "Bit grid saved successfully" << endl;
 }
 
 void BitGridCodec::run()
@@ -234,7 +236,7 @@ void BitGridCodec::run()
     const string menuPrompt = "-------------------------\n"
                               "[1] Generate a bit grid\n"
                               "[2] View my bit grid\n"
-                              "[3] Download my bit grid\n"
+                              "[3] Save my bit grid\n"
                               "[4] Decode a bit grid\n"
                               "[5] About the project\n"
                               "[6] Exit\n"
@@ -256,13 +258,14 @@ void BitGridCodec::run()
             setInputStr(inputStr);
 
             cout << "\nYour bit grid is now:\n" << bitGrid;
-            cout << "The checksum of your orginal input: " << calculateChecksum(inputStr) << endl;
+            cout << "The checksum of your original input: " << calculateChecksum(inputStr) << endl;
 
             string gridBinaryStr = bitGridToBinaryStr(bitGrid);
             int extractedChecksum = binaryStringToInt(gridBinaryStr.substr(48, 16));
+            int recalculatedChecksum = calculateChecksum(decodeBitGrid(bitGrid));
             cout << "The checksum stored in the bit grid: " << extractedChecksum << endl;
 
-            if (calculateChecksum(decodeBitGrid(bitGrid)) == extractedChecksum)
+            if (recalculatedChecksum == extractedChecksum)
             {
                 cout << "The checksums match, no corruption was detected." << endl;
             }
@@ -326,15 +329,15 @@ void BitGridCodec::run()
                                  "as a two-dimensional grid using shaded and filled blocks.\n"
                                  "\n"
                                  "Each bit grid begins with a 64-bit header containing a 32-bit HABG format\n"
-                                 "signature, a 16-bit message length, and a 16-bit checksum. The signature\n"
-                                 "identifies the data as using the BitGrid format, while the message length\n"
-                                 "tells the decoder how much encoded message data to read.\n"
+                                 "signature, a 16-bit message length, and a 16-bit checksum field. The\n"
+                                 "signature identifies the data as using the BitGrid format, while the\n"
+                                 "message length tells the decoder how much encoded message data to read.\n"
                                  "\n"
-                                 "The checksum provides an integrity check for the encoded message. It is\n"
-                                 "calculated from the characters in the original input, their positions,\n"
-                                 "and the HABG signature. When a bit grid is decoded, the stored checksum\n"
-                                 "is compared with a checksum calculated from the decoded message. Matching\n"
-                                 "values indicate that the message was decoded without detected corruption.\n"
+                                 "The checksum provides a basic integrity check for the encoded message. It\n"
+                                 "is calculated from each character's numeric value and position in the\n"
+                                 "original input, then stored in the BitGrid header. During validation, the\n"
+                                 "stored checksum is compared with a checksum recalculated from the decoded\n"
+                                 "message. Matching values indicate that no corruption was detected.\n"
                                  "\n"
                                  "Users can encode text into a bit grid, view the current grid, save it to a\n"
                                  "text file, or paste an existing BitGrid representation into the program\n"

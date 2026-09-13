@@ -1,12 +1,11 @@
 #pragma once
-
+#include <cstddef>
 #include <string>
-#include <vector>
 
 class BitGridCodec
 {
   public:
-    std::string intToBinaryString(int num, size_t width);
+    std::string intToBinaryString(int num, std::size_t width);
     std::string charToBinaryString(char character);
     std::string textToBinaryString(const std::string &text);
 
@@ -26,9 +25,7 @@ class BitGridCodec
     void run();
 
   private:
-    std::string inputStr;  // user input text
-    std::string bitStream; // continuous binary representation of inputStr
-    std::string bitGrid;   // string for the actual grid/image
-
+    std::string inputStr;
+    std::string bitGrid;
     const std::string bitGridSignature = "HABG";
 };
