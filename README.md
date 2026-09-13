@@ -5,20 +5,6 @@
   binary format and decodes it with signature, length, and checksum validation.
 </p>
 
-<!--
-DEMO PLACEHOLDER
-
-Recommended:
-1. Create an "assets" folder in the repository.
-2. Record a short GIF showing:
-   - entering text
-   - generating a BitGrid
-   - displaying the checksum
-   - decoding a BitGrid back into text
-3. Save it as assets/bitgrid-demo.gif.
-4. Uncomment this:
--->
-
 <p align="center">
   <img src="assets/bitgrid-demo.gif"
        alt="BitGrid Encoder/Decoder demonstration"
@@ -153,23 +139,6 @@ Output from the current implementation:
 The checksum stored in the bit grid: 1585
 The recalculated checksum from the grid data: 1585
 ```
-
-<!--
-SCREENSHOT PLACEHOLDER
-
-A cropped terminal screenshot can replace or supplement the text example above.
-
-Recommended filename:
-assets/bitgrid-output.png
-
-Then uncomment:
-
-<p align="center">
-  <img src="assets/bitgrid-output.png"
-       alt="BitGrid generated from sample input"
-       width="800">
-</p>
--->
 
 ## Decoding and Validation
 
