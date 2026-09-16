@@ -159,16 +159,17 @@ string BitGridCodec::constructBitGrid()
     return bitGrid;
 }
 
-void BitGridCodec::encode(const string &inputStr)
+string BitGridCodec::encode(const string &inputTxt)
 {
-    if (inputStr.size() > 65535)
+    if (inputTxt.size() > 65535)
     {
         cout << "ERROR - input must be 65535 characters or fewer\n";
-        return;
+        return "";
     }
 
-    this->inputStr = inputStr;
+    this->inputStr = inputTxt;
     bitGrid = constructBitGrid();
+    return bitGrid;
 }
 
 string BitGridCodec::bitGridToBinaryStr(const string &bitGrid)
@@ -194,7 +195,7 @@ string BitGridCodec::bitGridToBinaryStr(const string &bitGrid)
     return binaryStr;
 }
 
-string BitGridCodec::decodeBitGrid(const string &bitGrid)
+string BitGridCodec::decode(const string &bitGrid)
 {
     string binaryStr = bitGridToBinaryStr(bitGrid);
 
@@ -229,26 +230,6 @@ string BitGridCodec::decodeBitGrid(const string &bitGrid)
     }
 
     return decodedMessage;
-}
-
-// void BitGridCodec::saveBitGrid()
-// {
-//     ofstream bitGridFile("bitGrid.txt");
-
-//     if (!bitGridFile.is_open())
-//     {
-//         cout << "An error occurred while saving the grid.\n"
-//              << "Please try saving the bit grid again\n";
-//         return;
-//     }
-
-//     bitGridFile << bitGrid;
-//     cout << "Bit grid saved successfully" << endl;
-// }
-
-string BitGridCodec::getBitGrid()
-{
-    return bitGrid;
 }
 
 // void BitGridCodec::run()

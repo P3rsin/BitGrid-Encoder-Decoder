@@ -21,22 +21,28 @@ int handleEncoding(int argc, char *argv[])
     }
 
     string arg2 = argv[2];
-    bitGridCodec.encode(arg2);
-    cout << bitGridCodec.getBitGrid();
+    cout << bitGridCodec.encode(arg2);
 
     return 0;
 }
 
 int handleDecoding(int argc, char *argv[])
 {
-    if (argc < 3)
-    {
-        cout << "add some input text\n";
-        return 1;
+    // if (argc < 3)
+    // {
+    //     cout << "add some input text\n";
+    //     return 1;
+    // }
+
+    BitGridCodec bitGridCodec;
+
+    string total;
+    string line;
+    while (getline(cin, line)) {
+        total = total + line + '\n';
     }
 
-    string arg2 = argv[2];
-    cout << arg2 << endl; 
+    cout << bitGridCodec.decode(total) << '\n';
 
     return 0;
 }
