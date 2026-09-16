@@ -24,12 +24,12 @@ string BitGridCodec::charToBinaryString(char character)
     return intToBinaryString(value, 8);
 }
 
-string BitGridCodec::textToBinaryString(const string &str)
+string BitGridCodec::textToBinaryString(const string &text)
 {
     string binaryStr;
-    binaryStr.reserve(str.size() * 8);
+    binaryStr.reserve(text.size() * 8);
 
-    for (char character : str)
+    for (char character : text)
     {
         binaryStr += charToBinaryString(character);
     }
@@ -85,22 +85,22 @@ int BitGridCodec::calculateChecksum(const string &text)
     return checksum;
 }
 
-string BitGridCodec::buildHeader()
+string BitGridCodec::buildHeader(const string &inputTxt)
 {
-    string inputStrSizeBinary = intToBinaryString(inputStr.size(), 16);
-    string checksumBinary = intToBinaryString(calculateChecksum(inputStr), 16);
+    string inputStrSizeBinary = intToBinaryString(inputTxt.size(), 16);
+    string checksumBinary = intToBinaryString(calculateChecksum(inputTxt), 16);
 
     // 32 bits for signature - 16 bits for input size - 16 bits for checksum
     return textToBinaryString(bitGridSignature) + inputStrSizeBinary + checksumBinary;
 }
 
-string BitGridCodec::constructBitGrid()
+string BitGridCodec::constructBitGrid(const string &inputTxt)
 {
-    string encodedBits = buildHeader() + textToBinaryString(inputStr);
+    string encodedBits = buildHeader(inputTxt) + textToBinaryString(inputTxt);
     size_t totalBitCount = encodedBits.size();
     int gridSize = static_cast<int>(ceil(sqrt(totalBitCount))) + 2;
 
-    bitGrid.clear();
+    string bitGrid;
     size_t bitIndex = 0;
 
     for (int row = 0; row < gridSize; row++)
@@ -167,16 +167,12 @@ string BitGridCodec::encode(const string &inputTxt)
         return "";
     }
 
-    this->inputStr = inputTxt;
-    bitGrid = constructBitGrid();
-    return bitGrid;
+    return constructBitGrid(inputTxt);
 }
 
 string BitGridCodec::bitGridToBinaryStr(const string &bitGrid)
 {
     string binaryStr;
-    string zeroBlock = "▒▒";
-    string oneBlock = "██";
 
     for (size_t i = 0; i < bitGrid.size(); i++)
     {
@@ -231,126 +227,3 @@ string BitGridCodec::decode(const string &bitGrid)
 
     return decodedMessage;
 }
-
-// void BitGridCodec::run()
-// {
-//     string usrInput;
-
-//     const string title = "-------------------------\n"
-//                          " BitGrid Encoder/Decoder \n";
-
-//     const string menuPrompt = "-------------------------\n"
-//                               "[1] Generate a bit grid\n"
-//                               "[2] View my bit grid\n"
-//                               "[3] Save my bit grid\n"
-//                               "[4] Decode a bit grid\n"
-//                               "[5] About the project\n"
-//                               "[6] Exit\n"
-//                               "Choice: ";
-
-//     cout << title << menuPrompt;
-//     cin >> usrInput;
-
-//     while (usrInput != "6")
-//     {
-//         cout << endl;
-
-//         if (usrInput == "1")
-//         {
-//             cout << "Please enter a string to convert\nMy Input: ";
-
-//             cin.ignore();
-//             getline(cin, inputStr);
-//             encode(inputStr);
-
-//             cout << "\nYour bit grid is now:\n" << bitGrid;
-
-//             string gridBinaryStr = bitGridToBinaryStr(bitGrid);
-//             int extractedChecksum = binaryStringToInt(gridBinaryStr.substr(48, 16));
-//             int recalculatedChecksum = calculateChecksum(decodeBitGrid(bitGrid));
-
-//             cout << "The checksum stored in the bit grid: " << extractedChecksum << endl;
-//             cout << "The recalculated checksum from the grid data: " << recalculatedChecksum << endl;
-//         }
-//         else if (usrInput == "2")
-//         {
-//             if (bitGrid.empty())
-//             {
-//                 cout << "You have not generated a bit grid yet" << endl;
-//             }
-//             else
-//             {
-//                 cout << "Your current string:\n" << inputStr << endl;
-//                 cout << "\nYour bit grid is:\n" << bitGrid;
-//             }
-//         }
-//         else if (usrInput == "3")
-//         {
-//             if (bitGrid.empty())
-//             {
-//                 cout << "You have not generated a bit grid yet" << endl;
-//             }
-//             else
-//             {
-//                 saveBitGrid();
-//             }
-//         }
-//         else if (usrInput == "4")
-//         {
-//             cout << "Note, you must type \"Done\" in a NEW LINE" << endl;
-//             cout << "once you've pasted the bit grid you want to" << endl;
-//             cout << "decode. Please provide the bit grid:\n" << endl;
-
-//             string line;
-//             string fullBitGrid;
-
-//             while (true)
-//             {
-//                 getline(cin, line);
-
-//                 if (line == "Done")
-//                 {
-//                     break;
-//                 }
-
-//                 fullBitGrid += line + "\n";
-//             }
-
-//             cout << "\nDecoded string: " << decodeBitGrid(fullBitGrid) << endl;
-//         }
-//         else if (usrInput == "5")
-//         {
-//             string projectInfo = "Project Info:\n"
-//                                  "BitGrid Encoder/Decoder is a terminal-based program that encodes text into\n"
-//                                  "a custom visual binary format. Each character in the input is converted\n"
-//                                  "into an 8-bit binary representation, and the resulting data is displayed\n"
-//                                  "as a two-dimensional grid using shaded and filled blocks.\n"
-//                                  "\n"
-//                                  "Each bit grid begins with a 64-bit header containing a 32-bit HABG format\n"
-//                                  "signature, a 16-bit message length, and a 16-bit checksum. The signature\n"
-//                                  "identifies the data as using the BitGrid format, while the message length\n"
-//                                  "tells the decoder exactly how much encoded message data to read.\n"
-//                                  "\n"
-//                                  "The checksum provides a basic integrity check for the encoded message. It\n"
-//                                  "is calculated from each character's numeric value and position in the\n"
-//                                  "original input, then stored in the BitGrid header. During decoding, the\n"
-//                                  "program validates the HABG signature, verifies that the expected message\n"
-//                                  "data is present, and compares the stored checksum with one recalculated\n"
-//                                  "from the decoded message. A matching checksum indicates that no corruption\n"
-//                                  "was detected.\n"
-//                                  "\n"
-//                                  "Users can encode text into a bit grid, view the current grid, save it to a\n"
-//                                  "text file, or paste an existing BitGrid representation into the program\n"
-//                                  "to validate and decode it back into text.";
-
-//             cout << projectInfo << endl;
-//         }
-//         else
-//         {
-//             cout << "INVALID INPUT" << endl;
-//         }
-
-//         cout << endl << menuPrompt;
-//         cin >> usrInput;
-//     }
-// }

@@ -18,12 +18,12 @@ class BitGridCodec
     std::string binaryStringToText(const std::string &binary);
 
     int calculateChecksum(const std::string &text);
-    std::string buildHeader();
-    std::string constructBitGrid();
+    std::string buildHeader(const std::string &inputTxt);
+    std::string constructBitGrid(const std::string &inputTxt);
 
     std::string bitGridToBinaryStr(const std::string &bitGrid);
 
-    std::string inputStr;
-    std::string bitGrid;
     const std::string bitGridSignature = "HABG";
+    const std::string zeroBlock = "▒▒";
+    const std::string oneBlock = "██";
 };

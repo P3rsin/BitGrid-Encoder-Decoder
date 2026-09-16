@@ -9,17 +9,24 @@ int printHelp()
     return 0;
 }
 
+int aboutProject()
+{
+    cout << "[Project description]" << '\n';
+    return 0;
+}
+
 int handleEncoding(int argc, char *argv[])
 {
     BitGridCodec bitGridCodec;
 
-    // no input text error
     if (argc < 3)
     {
         cout << "add some input text\n";
         return 1;
     }
 
+    // what inputs would be considered bad
+    // that I would need to check for
     string arg2 = argv[2];
     cout << bitGridCodec.encode(arg2);
 
@@ -28,17 +35,18 @@ int handleEncoding(int argc, char *argv[])
 
 int handleDecoding(int argc, char *argv[])
 {
-    // if (argc < 3)
-    // {
-    //     cout << "add some input text\n";
-    //     return 1;
-    // }
+    if (argc < 3)
+    {
+        cout << "add some input text\n";
+        return 1;
+    }
 
     BitGridCodec bitGridCodec;
 
     string total;
     string line;
-    while (getline(cin, line)) {
+    while (getline(cin, line))
+    {
         total = total + line + '\n';
     }
 
@@ -64,6 +72,10 @@ int main(int argc, char *argv[])
     else if (command == "decode")
     {
         return handleDecoding(argc, argv);
+    }
+    else if (command == "about")
+    {
+        return aboutProject();
     }
     else if (command == "help")
     {
