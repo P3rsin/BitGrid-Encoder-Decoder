@@ -1,7 +1,3 @@
-main
-*.o
-*.out
-.vscode/
-bitGrid.txt
-BitGrid
-notes.txt
+assets/bitGrid.txt
+assets/notes.txt
+build/
