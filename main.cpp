@@ -25,8 +25,6 @@ int handleEncoding(int argc, char *argv[])
         return 1;
     }
 
-    // what inputs would be considered bad
-    // that I would need to check for
     string arg2 = argv[2];
     cout << bitGridCodec.encode(arg2);
 

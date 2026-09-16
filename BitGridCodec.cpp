@@ -6,16 +6,16 @@ using namespace std;
 
 string BitGridCodec::intToBinaryString(int num, size_t width)
 {
-    string binaryStr(width, '0');
+    string binary(width, '0');
 
     for (size_t i = width; i-- > 0;)
     {
-        binaryStr[i] = static_cast<char>('0' + (num % 2));
+        binary[i] = static_cast<char>('0' + (num % 2));
         // in ASCII: '0' is 48 and '1' is 49 so ^ works out
         num /= 2;
     }
 
-    return binaryStr;
+    return binary;
 }
 
 string BitGridCodec::charToBinaryString(char character)
@@ -26,26 +26,26 @@ string BitGridCodec::charToBinaryString(char character)
 
 string BitGridCodec::textToBinaryString(const string &text)
 {
-    string binaryStr;
-    binaryStr.reserve(text.size() * 8);
+    string binary;
+    binary.reserve(text.size() * 8);
 
     for (char character : text)
     {
-        binaryStr += charToBinaryString(character);
+        binary += charToBinaryString(character);
     }
 
-    return binaryStr;
+    return binary;
 }
 
-int BitGridCodec::binaryStringToInt(const string &binaryStr)
+int BitGridCodec::binaryStringToInt(const string &binary)
 {
     int value = 0;
 
-    for (size_t i = 0; i < binaryStr.size(); i++)
+    for (size_t i = 0; i < binary.size(); i++)
     {
         value *= 2;
 
-        if (binaryStr[i] == '1')
+        if (binary[i] == '1')
         {
             value++;
         }
@@ -85,18 +85,18 @@ int BitGridCodec::calculateChecksum(const string &text)
     return checksum;
 }
 
-string BitGridCodec::buildHeader(const string &inputTxt)
+string BitGridCodec::buildHeader(const string &inputText)
 {
-    string inputStrSizeBinary = intToBinaryString(inputTxt.size(), 16);
-    string checksumBinary = intToBinaryString(calculateChecksum(inputTxt), 16);
+    string payloadLengthBits = intToBinaryString(inputText.size(), 16);
+    string checksumBits = intToBinaryString(calculateChecksum(inputText), 16);
 
     // 32 bits for signature - 16 bits for input size - 16 bits for checksum
-    return textToBinaryString(bitGridSignature) + inputStrSizeBinary + checksumBinary;
+    return textToBinaryString(bitGridSignature) + payloadLengthBits + checksumBits;
 }
 
-string BitGridCodec::constructBitGrid(const string &inputTxt)
+string BitGridCodec::buildBitGrid(const string &inputText)
 {
-    string encodedBits = buildHeader(inputTxt) + textToBinaryString(inputTxt);
+    string encodedBits = buildHeader(inputText) + textToBinaryString(inputText);
     size_t totalBitCount = encodedBits.size();
     int gridSize = static_cast<int>(ceil(sqrt(totalBitCount))) + 2;
 
@@ -159,48 +159,48 @@ string BitGridCodec::constructBitGrid(const string &inputTxt)
     return bitGrid;
 }
 
-string BitGridCodec::encode(const string &inputTxt)
+string BitGridCodec::encode(const string &inputText)
 {
-    if (inputTxt.size() > 65535)
+    if (inputText.size() > 65535)
     {
         cout << "ERROR - input must be 65535 characters or fewer\n";
         return "";
     }
 
-    return constructBitGrid(inputTxt);
+    return buildBitGrid(inputText);
 }
 
-string BitGridCodec::bitGridToBinaryStr(const string &bitGrid)
+string BitGridCodec::bitGridToBinaryString(const string &bitGrid)
 {
-    string binaryStr;
+    string binary;
 
     for (size_t i = 0; i < bitGrid.size(); i++)
     {
         if (bitGrid.substr(i, zeroBlock.size()) == zeroBlock)
         {
-            binaryStr += "0";
+            binary += "0";
             i += zeroBlock.size() - 1;
         }
         else if (bitGrid.substr(i, oneBlock.size()) == oneBlock)
         {
-            binaryStr += "1";
+            binary += "1";
             i += oneBlock.size() - 1;
         }
     }
 
-    return binaryStr;
+    return binary;
 }
 
 string BitGridCodec::decode(const string &bitGrid)
 {
-    string binaryStr = bitGridToBinaryStr(bitGrid);
+    string binary = bitGridToBinaryString(bitGrid);
 
-    if (binaryStr.size() < 64)
+    if (binary.size() < 64)
     {
         return "ERROR - missing or incomplete header";
     }
 
-    string header = binaryStr.substr(0, 64);
+    string header = binary.substr(0, 64);
 
     if (binaryStringToText(header.substr(0, 32)) != bitGridSignature)
     {
@@ -209,12 +209,12 @@ string BitGridCodec::decode(const string &bitGrid)
 
     size_t payloadBitCount = static_cast<size_t>(binaryStringToInt(header.substr(32, 16))) * 8;
 
-    if (binaryStr.size() < 64 + payloadBitCount)
+    if (binary.size() < 64 + payloadBitCount)
     {
         return "ERROR - missing data";
     }
 
-    string payloadBits = binaryStr.substr(64, payloadBitCount);
+    string payloadBits = binary.substr(64, payloadBitCount);
     string decodedMessage = binaryStringToText(payloadBits);
 
     int extractedChecksum = binaryStringToInt(header.substr(48, 16));
