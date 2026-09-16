@@ -9,13 +9,13 @@ int printHelp()
     return 0;
 }
 
-int aboutProject()
+int printProjectInfo()
 {
     cout << "[Project description]" << '\n';
     return 0;
 }
 
-int handleEncoding(int argc, char *argv[])
+int handleEncodeCommand(int argc, char *argv[])
 {
     BitGridCodec bitGridCodec;
 
@@ -25,13 +25,13 @@ int handleEncoding(int argc, char *argv[])
         return 1;
     }
 
-    string arg2 = argv[2];
-    cout << bitGridCodec.encode(arg2);
+    string inputText = argv[2];
+    cout << bitGridCodec.encode(inputText);
 
     return 0;
 }
 
-int handleDecoding(int argc, char *argv[])
+int handleDecodeCommand(int argc, char *argv[])
 {
     if (argc < 3)
     {
@@ -41,14 +41,15 @@ int handleDecoding(int argc, char *argv[])
 
     BitGridCodec bitGridCodec;
 
-    string total;
-    string line;
-    while (getline(cin, line))
+    string bitGridInput;
+    string inputLine;
+
+    while (getline(cin, inputLine))
     {
-        total = total + line + '\n';
+        bitGridInput = bitGridInput + inputLine + '\n';
     }
 
-    cout << bitGridCodec.decode(total) << '\n';
+    cout << bitGridCodec.decode(bitGridInput) << '\n';
 
     return 0;
 }
@@ -65,15 +66,15 @@ int main(int argc, char *argv[])
 
     if (command == "encode")
     {
-        return handleEncoding(argc, argv);
+        return handleEncodeCommand(argc, argv);
     }
     else if (command == "decode")
     {
-        return handleDecoding(argc, argv);
+        return handleDecodeCommand(argc, argv);
     }
     else if (command == "about")
     {
-        return aboutProject();
+        return printProjectInfo();
     }
     else if (command == "help")
     {
