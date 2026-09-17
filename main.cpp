@@ -33,11 +33,11 @@ int handleEncodeCommand(int argc, char *argv[])
 
 int handleDecodeCommand(int argc, char *argv[])
 {
-    if (argc < 3)
-    {
-        cout << "add some input text\n";
-        return 1;
-    }
+    // if (argc < 3)
+    // {
+    //     cout << "add some input text\n";
+    //     return 1;
+    // }
 
     BitGridCodec bitGridCodec;
 

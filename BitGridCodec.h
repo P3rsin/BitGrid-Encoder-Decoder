@@ -23,9 +23,9 @@ class BitGridCodec
 
     std::string extractBinaryBits(const std::string &bitGrid);
 
-    const std::string formatSignature = "HABG";
-    const std::string zeroBitBlock = "▒▒";
-    const std::string oneBitBlock = "██";
+    inline static const std::string FORMAT_SIGNATURE = "HABG";
+    inline static const std::string ZERO_BIT_BLOCK = "▒▒";
+    inline static const std::string ONE_BIT_BLOCK = "██";
 
     static constexpr size_t BITS_PER_BYTE = 8;
     static constexpr size_t PAYLOAD_LENGTH_BITS = 16;

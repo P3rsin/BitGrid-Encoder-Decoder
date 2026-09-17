@@ -1,2 +1,4 @@
 build/
-txtfiles/
+output.txt
+input.txt
+notes.txt
