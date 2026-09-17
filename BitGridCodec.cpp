@@ -1,10 +1,15 @@
 #include "BitGridCodec.h"
+
 #include <cmath>
 #include <iostream>
 
 using namespace std;
 
-string BitGridCodec::integerToBinaryBits(int value, size_t bitWidth)
+namespace
+{
+constexpr size_t BITS_PER_BYTE = 8;
+
+string integerToBinaryBits(int value, size_t bitWidth)
 {
     string binaryBits(bitWidth, '0');
 
@@ -17,13 +22,13 @@ string BitGridCodec::integerToBinaryBits(int value, size_t bitWidth)
     return binaryBits;
 }
 
-string BitGridCodec::characterToBinaryBits(char character)
+string characterToBinaryBits(char character)
 {
     unsigned char byteValue = static_cast<unsigned char>(character);
     return integerToBinaryBits(byteValue, BITS_PER_BYTE);
 }
 
-string BitGridCodec::textToBinaryBits(const string &text)
+string textToBinaryBits(const string &text)
 {
     string binaryBits;
     binaryBits.reserve(text.size() * BITS_PER_BYTE);
@@ -36,7 +41,7 @@ string BitGridCodec::textToBinaryBits(const string &text)
     return binaryBits;
 }
 
-int BitGridCodec::binaryBitsToInteger(const string &binaryBits)
+int binaryBitsToInteger(const string &binaryBits)
 {
     int integerValue = 0;
 
@@ -53,12 +58,12 @@ int BitGridCodec::binaryBitsToInteger(const string &binaryBits)
     return integerValue;
 }
 
-char BitGridCodec::binaryBitsToCharacter(const string &binaryBits)
+char binaryBitsToCharacter(const string &binaryBits)
 {
     return static_cast<char>(binaryBitsToInteger(binaryBits));
 }
 
-string BitGridCodec::binaryBitsToText(const string &binaryBits)
+string binaryBitsToText(const string &binaryBits)
 {
     string decodedText;
 
@@ -69,6 +74,7 @@ string BitGridCodec::binaryBitsToText(const string &binaryBits)
 
     return decodedText;
 }
+} // namespace
 
 int BitGridCodec::calculateChecksum(const string &text)
 {
