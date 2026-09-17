@@ -9,21 +9,27 @@ class BitGridCodec
     std::string decode(const std::string &bitGrid);
 
   private:
-    std::string intToBinaryString(int num, std::size_t width);
-    std::string charToBinaryString(char character);
-    std::string textToBinaryString(const std::string &text);
+    std::string integerToBinaryBits(int value, std::size_t bitWidth);
+    std::string characterToBinaryBits(char character);
+    std::string textToBinaryBits(const std::string &text);
 
-    int binaryStringToInt(const std::string &binary);
-    char binaryStringToChar(const std::string &binary);
-    std::string binaryStringToText(const std::string &binary);
+    int binaryBitsToInteger(const std::string &binaryBits);
+    char binaryBitsToCharacter(const std::string &binaryBits);
+    std::string binaryBitsToText(const std::string &binaryBits);
 
     int calculateChecksum(const std::string &text);
-    std::string buildHeader(const std::string &inputText);
+    std::string buildHeaderBits(const std::string &inputText);
     std::string buildBitGrid(const std::string &inputText);
 
-    std::string bitGridToBinaryString(const std::string &bitGrid);
+    std::string extractBinaryBits(const std::string &bitGrid);
 
-    const std::string bitGridSignature = "HABG";
-    const std::string zeroBlock = "▒▒";
-    const std::string oneBlock = "██";
+    const std::string formatSignature = "HABG";
+    const std::string zeroBitBlock = "▒▒";
+    const std::string oneBitBlock = "██";
+
+    static constexpr size_t BITS_PER_BYTE = 8;
+    static constexpr size_t PAYLOAD_LENGTH_BITS = 16;
+    static constexpr size_t CHECKSUM_BITS = 16;
+    static constexpr size_t SIGNATURE_BITS = 32;
+    static constexpr size_t HEADER_BITS = SIGNATURE_BITS + PAYLOAD_LENGTH_BITS + CHECKSUM_BITS;
 };
