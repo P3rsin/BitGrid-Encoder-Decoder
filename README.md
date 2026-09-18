@@ -251,8 +251,7 @@ Low-level binary conversion helpers are kept internal to the codec implementatio
 ├── BitGridCodec.h
 ├── CMakeLists.txt
 ├── main.cpp
-├── README.md
-└── assets/
+└── README.md
 ```
 
 ## Limitations
