@@ -146,21 +146,25 @@ int handleDecodeCommand(int argc, char *argv[])
 
     if (holds_alternative<CodecError>(result))
     {
-        if (get<CodecError>(result) == CodecError::IncompleteHeader)
+        CodecError error = get<CodecError>(result);
+
+        switch (error)
         {
+        case CodecError::IncompleteHeader:
             cerr << "ERROR - missing or incomplete header\n";
-        }
-        else if (get<CodecError>(result) == CodecError::InvalidSignature)
-        {
+            break;
+
+        case CodecError::InvalidSignature:
             cerr << "ERROR - invalid bitgrid signature\n";
-        }
-        else if (get<CodecError>(result) == CodecError::MissingData)
-        {
+            break;
+
+        case CodecError::MissingData:
             cerr << "ERROR - missing data\n";
-        }
-        else if (get<CodecError>(result) == CodecError::ChecksumMismatch)
-        {
+            break;
+
+        case CodecError::ChecksumMismatch:
             cerr << "ERROR - checksums don't match\n";
+            break;
         }
 
         return 1;
