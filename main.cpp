@@ -1,6 +1,7 @@
 #include "BitGridCodec.h"
 #include <fstream>
 #include <iostream>
+#include <sstream>
 
 using namespace std;
 
@@ -35,8 +36,10 @@ int handleEncodeCommand(int argc, char *argv[])
 
     string sourceArgument = argv[2];
     BitGridCodec codec;
-    string textToEncode;
-    string line;
+
+    istream *streamToUse = nullptr;
+    ifstream inputFile;
+    istringstream strStream;
 
     if (sourceArgument == "-f")
     {
@@ -53,7 +56,7 @@ int handleEncodeCommand(int argc, char *argv[])
         }
 
         string inputFilePath = argv[3];
-        ifstream inputFile(inputFilePath);
+        inputFile.open(inputFilePath);
 
         if (!inputFile)
         {
@@ -61,35 +64,28 @@ int handleEncodeCommand(int argc, char *argv[])
             return 1;
         }
 
-        while (getline(inputFile, line))
-        {
-            textToEncode += line;
-        }
+        streamToUse = &inputFile;
     }
-    else if (sourceArgument == "-")
-    {
-        if (argc > 3)
-        {
-            cerr << "too many args";
-            return 1;
-        }
 
-        while (getline(cin, line))
-        {
-            textToEncode += line;
-        }
+    if (argc != 3)
+    {
+        cerr << "bitgrid: error: too many arguments\n";
+        return 1;
+    }
+
+    if (sourceArgument == "-")
+    {
+        streamToUse = &cin;
     }
     else
     {
-        if (argc > 3)
-        {
-            cerr << "too many args";
-            return 1;
-        }
-        textToEncode = sourceArgument;
+        strStream.str(sourceArgument);
+        streamToUse = &strStream;
     }
 
-    CodecResult encodeResult = codec.encode(textToEncode);
+    ostringstream sstream;
+    sstream << streamToUse->rdbuf();
+    CodecResult encodeResult = codec.encode(sstream.str());
 
     if (holds_alternative<CodecError>(encodeResult))
     {
@@ -125,19 +121,17 @@ int handleDecodeCommand(int argc, char *argv[])
 
     string sourceArgument = argv[2];
     BitGridCodec codec;
-    string bitGridText;
-    string line;
+
+    istream *streamToUse = nullptr;
+    ifstream inputFile;
 
     if (sourceArgument == "-")
     {
-        while (getline(cin, line))
-        {
-            bitGridText += line;
-        }
+        streamToUse = &cin;
     }
     else
     {
-        ifstream inputFile(sourceArgument);
+        inputFile.open(sourceArgument);
 
         if (!inputFile)
         {
@@ -145,13 +139,12 @@ int handleDecodeCommand(int argc, char *argv[])
             return 1;
         }
 
-        while (getline(inputFile, line))
-        {
-            bitGridText += line;
-        }
+        streamToUse = &inputFile;
     }
 
-    CodecResult decodeResult = codec.decode(bitGridText);
+    ostringstream sstream;
+    sstream << streamToUse->rdbuf();
+    CodecResult decodeResult = codec.decode(sstream.str());
 
     if (holds_alternative<CodecError>(decodeResult))
     {
