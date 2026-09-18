@@ -47,6 +47,6 @@ class BitGridCodec
     static constexpr std::size_t SIGNATURE_BITS = 32;
     
     static constexpr std::size_t MAX_PAYLOAD_SIZE = (std::size_t{1} << PAYLOAD_LENGTH_BITS) - 1;
-    static constexpr std::size_t CHECMSUM_MODULUS = (std::size_t{1} << CHECKSUM_BITS) - 1;
+    static constexpr std::size_t CHECMSUM_MODULUS = (std::size_t{1} << CHECKSUM_BITS);
     static constexpr std::size_t HEADER_BITS = SIGNATURE_BITS + PAYLOAD_LENGTH_BITS + CHECKSUM_BITS;
 };
