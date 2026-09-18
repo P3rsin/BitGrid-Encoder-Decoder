@@ -1,8 +1,8 @@
 #include "BitGridCodec.h"
-#include <string>
 #include <fstream>
 #include <iostream>
 #include <sstream>
+#include <string>
 
 using namespace std;
 
@@ -163,6 +163,10 @@ int handleDecodeCommand(int argc, char *argv[])
 
         switch (codecError)
         {
+        case CodecError::InvalidCharacter:
+            cerr << "bitgrid: error: invalid character found\n";
+            break;
+
         case CodecError::IncompleteHeader:
             cerr << "bitgrid: error: missing or incomplete header\n";
             break;

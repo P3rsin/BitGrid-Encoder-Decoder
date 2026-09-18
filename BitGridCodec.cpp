@@ -81,7 +81,7 @@ int BitGridCodec::calculateChecksum(const string &text)
     for (size_t characterIndex = 0; characterIndex < text.size(); characterIndex++)
     {
         int byteValue = static_cast<unsigned char>(text[characterIndex]);
-        checksum = (checksum + (byteValue * (characterIndex + 1))) % 65536;
+        checksum = (checksum + (byteValue * (characterIndex + 1))) % CHECMSUM_MODULUS;
     }
 
     return checksum;
@@ -107,29 +107,20 @@ string BitGridCodec::buildBitGrid(const string &inputText)
     {
         for (int columnIndex = 0; columnIndex < gridDimension; columnIndex++)
         {
-            if (rowIndex == 0 && columnIndex == 0)
+            bool isBorderRow = rowIndex == 0 || rowIndex == gridDimension - 1;
+            bool isBorderColumn = columnIndex == 0 || columnIndex == gridDimension - 1;
+
+            if (isBorderRow && isBorderColumn)
             {
-                bitGrid += "╔";
+                bitGrid += BORDER_CORNER;
             }
-            else if (rowIndex == 0 && columnIndex == gridDimension - 1)
+            else if (isBorderRow)
             {
-                bitGrid += "╗";
+                bitGrid += string(BIT_BLOCK_LENGTH, BORDER_HORIZONTAL);
             }
-            else if (rowIndex == gridDimension - 1 && columnIndex == 0)
+            else if (isBorderColumn)
             {
-                bitGrid += "╚";
-            }
-            else if (rowIndex == gridDimension - 1 && columnIndex == gridDimension - 1)
-            {
-                bitGrid += "╝";
-            }
-            else if (rowIndex == 0 || rowIndex == gridDimension - 1)
-            {
-                bitGrid += "══";
-            }
-            else if (columnIndex == 0 || columnIndex == gridDimension - 1)
-            {
-                bitGrid += "║";
+                bitGrid += BORDER_VERTICAL;
             }
             else
             {
@@ -169,30 +160,77 @@ CodecResult BitGridCodec::encode(const string &inputText)
     return buildBitGrid(inputText);
 }
 
-string BitGridCodec::extractBinaryBits(const string &bitGrid)
+// needs to check errors in the structure/format (grid)
+CodecResult BitGridCodec::extractBinaryBits(const string &bitGrid)
 {
-    string extractedBits;
+    // border malformed
+    // is it a grid
+    // are there invalid characters in the bit portion
 
+    // int rowNum = 0;
+    // int rowLengthCounter = 0;
+    // int expectedGridDimension = -1;
+
+    // for (size_t characterIndex = 0; characterIndex < bitGrid.size(); characterIndex++)
+    // {
+    //     char curChar = bitGrid[characterIndex];
+
+    //     if (curChar == '\n')
+    //     {
+    //         if (expectedGridDimension == -1)
+    //         {
+    //             expectedGridDimension = rowLengthCounter;
+    //         }
+
+    //         rowNum++;
+    //         rowLengthCounter = 0;
+    //     }
+    //     else if (curChar != ZERO_BIT_CHAR && curChar != ONE_BIT_CHAR) {
+    //         return CodecError::InvalidCharacter
+    //     }
+
+    //     rowLengthCounter++;
+    // }
+
+    // if (rowNum != expectedGridDimension)
+    // {
+    //     return CodecError::NotInAGrid;
+    // }
+
+    string extractedBits;
     for (size_t characterIndex = 0; characterIndex < bitGrid.size(); characterIndex++)
     {
-        if (bitGrid.substr(characterIndex, ZERO_BIT_BLOCK.size()) == ZERO_BIT_BLOCK)
+        string curBlock = bitGrid.substr(characterIndex, BIT_BLOCK_LENGTH);
+
+        if (curBlock == ZERO_BIT_BLOCK)
         {
             extractedBits += "0";
-            characterIndex += ZERO_BIT_BLOCK.size() - 1;
+            characterIndex += BIT_BLOCK_LENGTH - 1;
         }
-        else if (bitGrid.substr(characterIndex, ONE_BIT_BLOCK.size()) == ONE_BIT_BLOCK)
+        else if (curBlock == ONE_BIT_BLOCK)
         {
             extractedBits += "1";
-            characterIndex += ONE_BIT_BLOCK.size() - 1;
+            characterIndex += BIT_BLOCK_LENGTH - 1;
         }
     }
 
     return extractedBits;
 }
 
+// this checks for errors in the bits itself
 CodecResult BitGridCodec::decode(const string &bitGrid)
 {
-    string extractedBits = extractBinaryBits(bitGrid);
+    CodecResult extractionResult = extractBinaryBits(bitGrid);
+    string extractedBits;
+
+    if (holds_alternative<CodecError>(extractionResult))
+    {
+        return get<CodecError>(extractionResult);
+    }
+    else
+    {
+        extractedBits = get<string>(extractionResult);
+    }
 
     if (extractedBits.size() < HEADER_BITS)
     {
