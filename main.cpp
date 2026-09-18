@@ -1,12 +1,19 @@
 #include "BitGridCodec.h"
+#include <string>
 #include <fstream>
 #include <iostream>
 #include <sstream>
 
 using namespace std;
 
-int printHelp()
+int printHelp(int argc)
 {
+    if (argc != 2)
+    {
+        cerr << "bitgrid: error: too many arguments\n";
+        return 1;
+    }
+
     cout << "BitGrid Encoder/Decoder\n\n"
          << "Usage:\n"
          << "  bitgrid encode <text>        Encode literal text into a BitGrid\n"
@@ -66,14 +73,12 @@ int handleEncodeCommand(int argc, char *argv[])
 
         streamToUse = &inputFile;
     }
-
-    if (argc != 3)
+    else if (argc != 3)
     {
         cerr << "bitgrid: error: too many arguments\n";
         return 1;
     }
-
-    if (sourceArgument == "-")
+    else if (sourceArgument == "-")
     {
         streamToUse = &cin;
     }
@@ -124,6 +129,12 @@ int handleDecodeCommand(int argc, char *argv[])
 
     istream *streamToUse = nullptr;
     ifstream inputFile;
+
+    if (argc != 3)
+    {
+        cerr << "bitgrid: error: too many arguments\n";
+        return 1;
+    }
 
     if (sourceArgument == "-")
     {
@@ -201,7 +212,7 @@ int main(int argc, char *argv[])
     }
     else if (command == "help")
     {
-        return printHelp();
+        return printHelp(argc);
     }
     else
     {

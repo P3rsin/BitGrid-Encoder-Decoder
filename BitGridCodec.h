@@ -1,5 +1,4 @@
 #pragma once
-#include <cmath>
 #include <cstddef>
 #include <string>
 #include <variant>
