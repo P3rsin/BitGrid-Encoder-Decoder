@@ -1,244 +1,270 @@
-<h1 align="center">BitGrid Encoder/Decoder</h1>
+# BitGrid
 
-<p align="center">
-  A C++ 17 terminal application that encodes text into a custom two-dimensional
-  binary format and decodes it with signature, length, and checksum validation.
-</p>
+**BitGrid** is a small C++17 command-line utility that encodes byte-oriented input into a custom two-dimensional binary format and decodes it with structural validation, metadata checks, and checksum verification.
 
-<p align="center">
-  <img src="assets/bitgrid-demo.gif"
-       alt="BitGrid Encoder/Decoder demonstration"
-       width="850">
-</p>
-
-## Overview
-
-**BitGrid Encoder/Decoder** is a terminal-based C++ program that converts text
-into a custom visual binary representation.
-
-Each byte of the input is represented by eight binary digits. The encoded
-payload is combined with a 64-bit metadata header and rendered as a square grid
-of filled and shaded Unicode blocks.
-
-The program can also reverse the process. When decoding a BitGrid, it validates
-the format signature, checks that the complete payload is present, reconstructs
-the original text, and verifies the data against a stored checksum.
+The project is intentionally small, but is designed as a complete CLI utility rather than an interactive menu program: it supports literal arguments, files, standard input/output, typed codec errors, and a reproducible CMake build.
 
 ## Features
 
-- Encode text into an 8-bit-per-byte binary representation
-- Render encoded data as a two-dimensional BitGrid
-- Decode BitGrid data back into text
-- Store metadata in a custom 64-bit header
-- Validate BitGrid input using a format signature and payload length
-- Detect data corruption using a 16-bit position-weighted checksum
-- Save generated BitGrids to a text file
-- Use all functionality through an interactive terminal interface
+- Encode text or file contents into a custom BitGrid representation
+- Decode BitGrid files or data read from standard input
+- Pipe and redirect data through standard Unix-style streams
+- Store a 64-bit metadata header containing:
+  - a 32-bit format signature
+  - a 16-bit payload length
+  - a 16-bit checksum
+- Validate grid dimensions, borders, and encoded bit blocks
+- Reject incomplete headers, invalid signatures, truncated payloads, and checksum mismatches
+- Preserve multiline input when reading from files or standard input
+- Build with CMake and the C++17 standard
+- No external library dependencies
 
-## BitGrid Format
-
-Every BitGrid contains a **64-bit header** followed by the encoded payload.
-
-| Field | Size | Purpose |
-| --- | ---: | --- |
-| `HABG` signature | 32 bits | Identifies the BitGrid format |
-| Payload length | 16 bits | Stores the number of encoded input bytes |
-| Checksum | 16 bits | Provides basic integrity validation |
-
-### Encoding
-
-For example, the text:
-
-```text
-Hi
-```
-
-is first converted byte by byte:
-
-```text
-'H' -> 01001000
-'i' -> 01101001
-```
-
-producing the payload:
-
-```text
-0100100001101001
-```
-
-The 64-bit header is prepended to this payload before the complete binary
-sequence is rendered into the grid.
-
-### Grid Representation
-
-The program finds the smallest square interior capable of storing the complete
-header and payload:
-
-```text
-interior size = ceil(sqrt(total encoded bits))
-```
-
-A border is then added around the data.
-
-| Grid element | Meaning |
-| --- | --- |
-| `██` | Binary `1` |
-| `▒▒` | Binary `0` |
-| `╔ ╗ ╚ ╝ ═ ║` | Grid border |
-
-Any unused cells required to complete the square are filled with `1` blocks.
-The payload-length field allows the decoder to ignore this padding.
-
-## Checksum Validation
-
-BitGrid uses a simple position-weighted 16-bit checksum.
-
-For each byte, its numeric value is multiplied by its one-based position. The
-results are accumulated modulo `65,536`:
-
-```text
-checksum = Σ(byte[i] * (i + 1)) mod 65536
-```
-
-During decoding, the program:
-
-1. reads the checksum stored in the header,
-2. decodes the payload,
-3. calculates a checksum from the decoded data, and
-4. compares the two values.
-
-A mismatch indicates that corruption was detected.
-
-> The checksum is designed for basic accidental-error detection. It is not
-> a cryptographic hash and should not be used for authentication or security.
-
-## Example
-
-Input:
-
-```text
-Hello
-```
-
-Output from the current implementation:
-
-```text
-╔══════════════════════╗
-║▒▒██▒▒▒▒██▒▒▒▒▒▒▒▒██▒▒║
-║▒▒▒▒▒▒▒▒██▒▒██▒▒▒▒▒▒▒▒║
-║██▒▒▒▒██▒▒▒▒▒▒██████▒▒║
-║▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒║
-║▒▒██▒▒██▒▒▒▒▒▒▒▒▒▒████║
-║▒▒▒▒▒▒████▒▒▒▒▒▒██▒▒██║
-║▒▒▒▒██▒▒▒▒▒▒▒▒████▒▒▒▒║
-║██▒▒██▒▒████▒▒████▒▒▒▒║
-║▒▒████▒▒████▒▒▒▒▒▒████║
-║▒▒████████████████████║
-║██████████████████████║
-╚══════════════════════╝
-The checksum stored in the bit grid: 1585
-The recalculated checksum from the grid data: 1585
-```
-
-## Decoding and Validation
-
-Before returning decoded text, BitGrid verifies:
-
-```text
-BitGrid input
-     |
-     v
-Convert blocks to binary
-     |
-     v
-64-bit header present?
-     |
-     v
-Valid HABG signature?
-     |
-     v
-Complete declared payload present?
-     |
-     v
-Decode payload
-     |
-     v
-Stored checksum matches recalculated checksum?
-     |
-     v
-Return decoded text
-```
-
-Malformed, incomplete, or corrupted input is rejected rather than silently
-decoded as valid data.
-
-## Build and Run
+## Build
 
 ### Requirements
 
-- A C++ compiler
-- C++17 mode
-- A terminal capable of displaying Unicode characters
+- CMake 3.16 or newer
+- A C++17-compatible compiler such as GCC or Clang
 
-The project uses only the C++ standard library and has no external library
-dependencies.
-
-### Clone
+Clone the repository:
 
 ```bash
 git clone https://github.com/P3rsin/BitGrid-Encoder-Decoder.git
 cd BitGrid-Encoder-Decoder
 ```
 
-### Compile
-
-Using GCC:
+Configure and build:
 
 ```bash
-g++ -std=c++17 -Wall -Wextra -Wpedantic main.cpp BitGridCodec.cpp -o BitGrid
+cmake -S . -B build
+cmake --build build
 ```
 
-### Run
+The executable will be created at:
+
+```text
+./build/bitgrid
+```
+
+To see the available commands:
 
 ```bash
-./BitGrid
+./build/bitgrid help
 ```
 
 ## Usage
 
-The program opens an interactive menu:
-
 ```text
--------------------------
- BitGrid Encoder/Decoder
--------------------------
-[1] Generate a bit grid
-[2] View my bit grid
-[3] Save my bit grid
-[4] Decode a bit grid
-[5] About the project
-[6] Exit
-Choice:
+bitgrid encode <text>        Encode literal text into a BitGrid
+bitgrid encode -f <file>     Encode the contents of a file
+bitgrid encode -             Encode data read from standard input
+
+bitgrid decode <file>        Decode a BitGrid file
+bitgrid decode -             Decode a BitGrid read from standard input
+
+bitgrid help                 Display command help
 ```
 
-**Generate:** enter text to create a BitGrid and view its checksum.
+When running directly from the build directory, use `./build/bitgrid` in place of `bitgrid`.
 
-**View:** display the currently stored input and generated BitGrid.
+### Encode literal text
 
-**Save:** write the current BitGrid to `bitGrid.txt`.
+```bash
+./build/bitgrid encode "Hello world"
+```
 
-**Decode:** paste a BitGrid into the terminal and enter `Done` on a new line
-after the final row. The program validates the data before returning the
-decoded text.
+Multiword text should be quoted so the shell passes it as one argument.
+
+### Encode a file
+
+```bash
+./build/bitgrid encode -f input.txt > encoded.bgrid
+```
+
+The encoded BitGrid is written to standard output, so normal shell redirection can be used to save it.
+
+### Encode from standard input
+
+```bash
+printf 'Hello\nworld' | ./build/bitgrid encode -
+```
+
+or:
+
+```bash
+./build/bitgrid encode - < input.txt > encoded.bgrid
+```
+
+### Decode a BitGrid file
+
+```bash
+./build/bitgrid decode encoded.bgrid
+```
+
+### Decode from standard input
+
+```bash
+./build/bitgrid decode - < encoded.bgrid
+```
+
+Because encoded output is written to `stdout` and diagnostic messages are written to `stderr`, BitGrid can be used cleanly in pipelines and shell scripts.
+
+## Example
+
+Encoding:
+
+```bash
+./build/bitgrid encode "Hi"
+```
+
+produces:
+
+```text
++------------------+
+|..##....##........|
+|##..........##..##|
+|........##....##..|
+|....######........|
+|..................|
+|..##..............|
+|..##......####..##|
+|....##....##......|
+|..####..##....####|
++------------------+
+```
+
+The result can be saved and decoded again:
+
+```bash
+./build/bitgrid encode "Hi" > hi.bgrid
+./build/bitgrid decode hi.bgrid
+```
+
+Output:
+
+```text
+Hi
+```
+
+## BitGrid Format
+
+BitGrid converts each input byte into eight binary bits. A 64-bit header is prepended to the payload before the complete bit sequence is rendered into the grid.
+
+### Header
+
+| Field | Size | Purpose |
+| --- | ---: | --- |
+| `HABG` signature | 32 bits | Identifies the BitGrid format |
+| Payload length | 16 bits | Number of encoded input bytes |
+| Checksum | 16 bits | Basic payload integrity check |
+
+The maximum payload size is therefore **65,535 bytes**.
+
+### Bit representation
+
+Each logical bit cell occupies two printable characters:
+
+| Block | Value |
+| --- | ---: |
+| `##` | `1` |
+| `..` | `0` |
+
+The grid border uses:
+
+| Character | Purpose |
+| --- | --- |
+| `+` | Corner |
+| `-` | Horizontal border |
+| `\|` | Vertical border |
+
+The header and payload bits are written row-by-row into the smallest square interior that can contain them:
+
+```text
+interior dimension = ceil(sqrt(header bits + payload bits))
+```
+
+A one-cell border is then added around the interior.
+
+If the final row contains unused cells, those cells are padded with `1` blocks (`##`). The payload-length field tells the decoder exactly how many payload bytes belong to the encoded data.
+
+## Checksum
+
+BitGrid uses a simple position-weighted 16-bit checksum.
+
+For each payload byte, the unsigned byte value is multiplied by its one-based position:
+
+```text
+checksum = Σ(byte[i] * (i + 1)) mod 65536
+```
+
+During decoding, BitGrid recalculates the checksum from the recovered payload and compares it with the value stored in the header.
+
+The checksum is intended only to detect accidental corruption. It is **not cryptographically secure** and must not be used for authentication or tamper resistance.
+
+## Validation
+
+Decoding is performed in stages.
+
+BitGrid first validates the physical grid structure:
+
+- the input contains enough rows to form a grid;
+- every row has the expected width;
+- the logical row and column counts form a square;
+- the top and bottom borders are correctly formed;
+- each interior row has valid left and right borders;
+- every interior data cell is either `..` or `##`.
+
+It then validates the encoded data:
+
+- the complete 64-bit header is present;
+- the signature matches `HABG`;
+- the payload length declared by the header is available;
+- the decoded payload matches the stored checksum.
+
+Malformed input is reported on `stderr`, and the program exits with a nonzero status.
+
+## Design
+
+The program is split into two main responsibilities:
+
+```text
+CLI / main.cpp
+    |
+    |  arguments, files, stdin/stdout, error reporting
+    v
+BitGridCodec
+    |
+    |  encoding, parsing, validation, checksum
+    v
+encoded or decoded data
+```
+
+`BitGridCodec` does not retain the previously encoded or decoded payload as object state. Each encode/decode operation receives its input directly and returns either a result or a `CodecError` through `std::variant`.
+
+Low-level binary conversion helpers are kept internal to the codec implementation.
+
+## Project Structure
+
+```text
+.
+├── BitGridCodec.cpp
+├── BitGridCodec.h
+├── CMakeLists.txt
+├── main.cpp
+├── README.md
+└── assets/
+```
 
 ## Limitations
 
-- The 16-bit length field limits input to **65,535 bytes**.
-- The checksum only provides basic error detection.
-- Text processing is byte-oriented rather than Unicode-code-point-aware.
-- BitGrid is a custom format and is not compatible with QR Code readers.
+- Payload size is limited to **65,535 bytes** by the 16-bit length field.
+- The checksum provides basic error detection only.
+- Input is byte-oriented rather than Unicode-code-point-aware.
+- Padding cells are generated as `1` blocks, but padding contents are not currently validated during decoding.
+- BitGrid is a custom format and is not compatible with QR codes or other standardized barcode formats.
 
 ## Author
 
-**Haroon Awan**  
+**Haroon Awan**
+
 [GitHub](https://github.com/P3rsin)
