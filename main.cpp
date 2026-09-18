@@ -58,7 +58,7 @@ int handleEncodeCommand(int argc, char *argv[])
         }
         else if (argc > 4)
         {
-            cerr << "too many args";
+            cerr << "bitgrid: error: too many arguments\n";
             return 1;
         }
 
@@ -99,7 +99,7 @@ int handleEncodeCommand(int argc, char *argv[])
         switch (codecError)
         {
         case CodecError::InputTooLarge:
-            cerr << "bitgrid: error: input must be under max payload size\n";
+            cerr << "bitgrid: error: input exceeds maximum payload size of 65535 bytes\n";
             break;
 
         default:
@@ -171,11 +171,7 @@ int handleDecodeCommand(int argc, char *argv[])
             cerr << "bitgrid: error: invalid block found\n";
             break;
 
-        case CodecError::InvalidCharacter:
-            cerr << "bitgrid: error: invalid character found\n";
-            break;
-
-        case CodecError::NotInAGrid:
+        case CodecError::InvalidDimensions:
             cerr << "bitgrid: error: bitgrid is not a square\n";
             break;
 

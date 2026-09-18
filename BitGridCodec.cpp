@@ -83,7 +83,7 @@ int BitGridCodec::calculateChecksum(const string &text)
     for (size_t characterIndex = 0; characterIndex < text.size(); characterIndex++)
     {
         int byteValue = static_cast<unsigned char>(text[characterIndex]);
-        checksum = (checksum + (byteValue * (characterIndex + 1))) % CHECMSUM_MODULUS;
+        checksum = (checksum + (byteValue * (characterIndex + 1))) % CHECKSUM_MODULUS;
     }
 
     return checksum;
@@ -193,17 +193,17 @@ CodecResult BitGridCodec::extractBinaryBits(const string &bitGrid)
         return CodecError::MissingData;
     }
 
-    size_t coluumnCheck = ((rowLength - 2) / BIT_BLOCK_LENGTH) + 2;
-    if (rows.size() != coluumnCheck)
+    size_t logicalGridDimension = ((rowLength - 2) / BIT_BLOCK_LENGTH) + 2;
+    if (rows.size() != logicalGridDimension)
     {
-        return CodecError::NotInAGrid;
+        return CodecError::InvalidDimensions;
     }
 
     for (size_t row = 0; row < rows.size(); row++)
     {
         if (rows[row].size() != rowLength)
         {
-            return CodecError::NotInAGrid;
+            return CodecError::InvalidDimensions;
         }
 
         if (row == 0 || row == rows.size() - 1)
