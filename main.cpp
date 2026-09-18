@@ -13,164 +13,161 @@ int printHelp()
          << "  bitgrid encode -             Encode text read from standard input\n"
          << "  bitgrid decode <file>        Decode a BitGrid file\n"
          << "  bitgrid decode -             Decode a BitGrid read from standard input\n"
-         << "  bitgrid about                Display information about the project\n"
          << "  bitgrid help                 Display this help message\n\n"
          << "Examples:\n"
          << "  bitgrid encode \"Hello world\"\n"
          << "  bitgrid encode -f input.txt\n"
          << "  echo \"Hello world\" | bitgrid encode -\n"
-         << "  bitgrid decode encoded.txt\n"
-         << "  cat encoded.txt | bitgrid decode -\n";
+         << "  bitgrid decode encoded.bgrid\n"
+         << "  cat encoded.bgrid | bitgrid decode -\n";
 
     return 0;
 }
 
 int handleEncodeCommand(int argc, char *argv[])
 {
-    string inputArgument;
-
-    if (argc >= 3)
+    if (argc < 3)
     {
-        inputArgument = argv[2];
-    }
-    else
-    {
-        cerr << "Error: no input provided for encoding.\n"
+        cerr << "bitgrid: error: no input provided for encoding\n"
              << "Run 'bitgrid help' for usage information.\n";
         return 1;
     }
 
-    BitGridCodec bitGridCodec;
-    string inputText;
-    string inputLine;
+    string sourceArgument = argv[2];
+    BitGridCodec codec;
+    string textToEncode;
+    string line;
 
-    if (inputArgument == "-f")
+    if (sourceArgument == "-f")
     {
-        string filePath;
-
-        if (argc >= 4)
+        if (argc < 4)
         {
-            filePath = argv[3];
-        }
-        else
-        {
-            cerr << "Error: '-f' requires a file path.\n"
+            cerr << "bitgrid: error: '-f' requires a file path\n"
                  << "Usage: bitgrid encode -f <file>\n";
             return 1;
         }
 
-        ifstream inputFile(filePath);
+        string inputFilePath = argv[3];
+        ifstream inputFile(inputFilePath);
 
         if (!inputFile)
         {
-            cerr << "Error: could not open file '" << filePath << "'.\n";
+            cerr << "bitgrid: error: could not open file '" << inputFilePath << "'\n";
             return 1;
         }
 
-        while (getline(inputFile, inputLine))
+        while (getline(inputFile, line))
         {
-            inputText += inputLine + '\n';
+            textToEncode += line + '\n';
         }
     }
-    else if (inputArgument == "-")
+    else if (sourceArgument == "-")
     {
-        while (getline(cin, inputLine))
+        while (getline(cin, line))
         {
-            inputText = inputText + inputLine;
+            textToEncode += line;
         }
     }
     else
     {
-        inputText = inputArgument;
+        textToEncode = sourceArgument;
     }
 
-    CodecResult result = bitGridCodec.encode(inputText);
+    CodecResult encodeResult = codec.encode(textToEncode);
 
-    if (holds_alternative<CodecError>(result))
+    if (holds_alternative<CodecError>(encodeResult))
     {
-        if (get<CodecError>(result) == CodecError::InputTooLarge)
+        CodecError codecError = get<CodecError>(encodeResult);
+
+        switch (codecError)
         {
-            cerr << "input must be 65535 characters or fewer\n";
+        case CodecError::InputTooLarge:
+            cerr << "bitgrid: error: input must be 65,535 bytes or fewer\n";
+            break;
+
+        default:
+            cerr << "bitgrid: error: encoding failed\n";
+            break;
         }
+
         return 1;
     }
 
-    cout << get<string>(result);
+    cout << get<string>(encodeResult);
     return 0;
 }
 
 int handleDecodeCommand(int argc, char *argv[])
 {
-    string inputArgument;
-
-    if (argc >= 3)
+    if (argc < 3)
     {
-        inputArgument = argv[2];
-    }
-    else
-    {
-        cerr << "Error: no BitGrid input provided for decoding.\n"
+        cerr << "bitgrid: error: no BitGrid input provided for decoding\n"
              << "Usage: bitgrid decode <file>\n"
              << "   or: bitgrid decode -\n";
         return 1;
     }
 
-    BitGridCodec bitGridCodec;
-    string bitGridInput;
-    string inputLine;
+    string sourceArgument = argv[2];
+    BitGridCodec codec;
+    string bitGridText;
+    string line;
 
-    if (inputArgument == "-")
+    if (sourceArgument == "-")
     {
-        while (getline(cin, inputLine))
+        while (getline(cin, line))
         {
-            bitGridInput = bitGridInput + inputLine;
+            bitGridText += line;
         }
     }
     else
     {
-        ifstream inputFile(inputArgument);
+        ifstream inputFile(sourceArgument);
 
         if (!inputFile)
         {
-            cerr << "Error: could not open file '" << inputArgument << "'.\n";
+            cerr << "bitgrid: error: could not open file '" << sourceArgument << "'\n";
             return 1;
         }
 
-        while (getline(inputFile, inputLine))
+        while (getline(inputFile, line))
         {
-            bitGridInput += inputLine + '\n';
+            bitGridText += line + '\n';
         }
     }
 
-    CodecResult result = bitGridCodec.decode(bitGridInput);
+    CodecResult decodeResult = codec.decode(bitGridText);
 
-    if (holds_alternative<CodecError>(result))
+    if (holds_alternative<CodecError>(decodeResult))
     {
-        CodecError error = get<CodecError>(result);
+        CodecError codecError = get<CodecError>(decodeResult);
 
-        switch (error)
+        switch (codecError)
         {
         case CodecError::IncompleteHeader:
-            cerr << "ERROR - missing or incomplete header\n";
+            cerr << "bitgrid: error: missing or incomplete header\n";
             break;
 
         case CodecError::InvalidSignature:
-            cerr << "ERROR - invalid bitgrid signature\n";
+            cerr << "bitgrid: error: invalid BitGrid signature\n";
             break;
 
         case CodecError::MissingData:
-            cerr << "ERROR - missing data\n";
+            cerr << "bitgrid: error: missing encoded data\n";
             break;
 
         case CodecError::ChecksumMismatch:
-            cerr << "ERROR - checksums don't match\n";
+            cerr << "bitgrid: error: checksum mismatch\n";
+            break;
+
+        default:
+            cerr << "bitgrid: error: decoding failed\n";
             break;
         }
 
         return 1;
     }
 
-    cout << get<string>(result);
+    cout << get<string>(decodeResult);
     return 0;
 }
 
@@ -178,7 +175,7 @@ int main(int argc, char *argv[])
 {
     if (argc < 2)
     {
-        cerr << "Error: no command provided.\n"
+        cerr << "bitgrid: error: no command provided\n"
              << "Run 'bitgrid help' for usage information.\n";
         return 1;
     }
@@ -199,7 +196,7 @@ int main(int argc, char *argv[])
     }
     else
     {
-        cerr << "Error: unknown command '" << command << "'.\n"
+        cerr << "bitgrid: error: unknown command '" << command << "'\n"
              << "Run 'bitgrid help' for usage information.\n";
         return 1;
     }
