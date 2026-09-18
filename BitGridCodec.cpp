@@ -174,7 +174,6 @@ CodecResult BitGridCodec::extractBinaryBits(const string &bitGrid)
         rows.push_back(readRow);
     }
 
-    // GRID DIMENSION REPRESENTS NUM TOTAL CHARS
     size_t rowLength;
 
     if (rows.size() < 2)
@@ -189,27 +188,24 @@ CodecResult BitGridCodec::extractBinaryBits(const string &bitGrid)
         return CodecError::MissingData;
     }
 
+    if ((rowLength - 2) % BIT_BLOCK_LENGTH != 0)
+    {
+        return CodecError::MissingData;
+    }
+
     size_t coluumnCheck = ((rowLength - 2) / BIT_BLOCK_LENGTH) + 2;
     if (rows.size() != coluumnCheck)
     {
         return CodecError::NotInAGrid;
     }
 
-    // check if an int num of blocks can fit in a row
-    if ((rowLength - 2) % BIT_BLOCK_LENGTH != 0)
-    {
-        return CodecError::MissingData;
-    }
-
     for (size_t row = 0; row < rows.size(); row++)
     {
-        // check if a row is larger or smaller than expected
         if (rows[row].size() != rowLength)
         {
             return CodecError::NotInAGrid;
         }
 
-        // if it's the first or last row, they should look exactly like the check string created below
         if (row == 0 || row == rows.size() - 1)
         {
             string check = BORDER_CORNER + string(rowLength - 2, BORDER_HORIZONTAL) + BORDER_CORNER;
@@ -218,16 +214,13 @@ CodecResult BitGridCodec::extractBinaryBits(const string &bitGrid)
                 return CodecError::MalformedBorder;
             }
         }
-        // otherwise it's one of the middle row
         else
         {
-            // if it's one of the middle rows and the first and last char aren't vert borders, error
             if (rows[row][0] != BORDER_VERTICAL || rows[row][rowLength - 1] != BORDER_VERTICAL)
             {
                 return CodecError::MalformedBorder;
             }
 
-            // for the inside chars, check if they form actual blocks
             for (size_t col = 1; col < rows[row].size() - 1; col += BIT_BLOCK_LENGTH)
             {
                 string currentBitBlock = rows[row].substr(col, BIT_BLOCK_LENGTH);
@@ -240,7 +233,6 @@ CodecResult BitGridCodec::extractBinaryBits(const string &bitGrid)
                 {
                     extractedBits += "1";
                 }
-                // if they don't look like an expected block, error
                 else
                 {
                     return CodecError::InvalidBlock;
