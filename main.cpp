@@ -167,6 +167,10 @@ int handleDecodeCommand(int argc, char *argv[])
             cerr << "bitgrid: error: invalid character found\n";
             break;
 
+        case CodecError::NotInAGrid:
+            cerr << "bitgrid: error: bitgrid is not a square\n";
+            break;
+
         case CodecError::IncompleteHeader:
             cerr << "bitgrid: error: missing or incomplete header\n";
             break;

@@ -12,6 +12,7 @@ enum class CodecError
     ChecksumMismatch,
     MalformedBorder,
     NotInAGrid,
+    InvalidBlock,
     InvalidCharacter
 };
 
