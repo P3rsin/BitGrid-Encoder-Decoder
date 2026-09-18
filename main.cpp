@@ -163,6 +163,14 @@ int handleDecodeCommand(int argc, char *argv[])
 
         switch (codecError)
         {
+        case CodecError::MalformedBorder:
+            cerr << "bitgrid: error: malformed border\n";
+            break;
+
+        case CodecError::InvalidBlock:
+            cerr << "bitgrid: error: invalid block found\n";
+            break;
+
         case CodecError::InvalidCharacter:
             cerr << "bitgrid: error: invalid character found\n";
             break;

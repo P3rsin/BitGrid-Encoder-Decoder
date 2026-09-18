@@ -162,40 +162,40 @@ CodecResult BitGridCodec::encode(const string &inputText)
 
 CodecResult BitGridCodec::extractBinaryBits(const string &bitGrid)
 {
-    size_t rowNum = 0;
-    size_t rowLengthCounter = 0;
-    size_t expectedGridDimension = bitGrid.find('\n');
+    size_t rowCount = 0;
+    size_t currentRowLength = 0;
+    size_t gridDimension = bitGrid.find('\n');
     string extractedBits;
 
-    if (expectedGridDimension == string::npos || expectedGridDimension < BIT_BLOCK_LENGTH + 2)
+    if (gridDimension == string::npos || gridDimension < BIT_BLOCK_LENGTH + 2)
     {
         return CodecError::NotInAGrid;
     }
-    else if (bitGrid.size() != (expectedGridDimension * (expectedGridDimension + 1)))
+    else if (bitGrid.size() != (gridDimension * (gridDimension + 1)))
     {
         return CodecError::MissingData;
     }
-    else if ((expectedGridDimension - 2) % BIT_BLOCK_LENGTH != 0)
+    else if ((gridDimension - 2) % BIT_BLOCK_LENGTH != 0)
     {
         return CodecError::MissingData;
     }
 
     for (size_t characterIndex = 0; characterIndex < bitGrid.size(); characterIndex++)
     {
-        size_t curRow = characterIndex / (expectedGridDimension + 1);
-        size_t curCol = characterIndex % (expectedGridDimension + 1);
+        size_t currentRow = characterIndex / (gridDimension + 1);
+        size_t currentColumn = characterIndex % (gridDimension + 1);
 
-        bool isBorderRow = curRow == 0 || curRow == expectedGridDimension - 1;
-        bool isBorderColumn = curCol == 0 || curCol == expectedGridDimension - 1;
+        bool isBorderRow = currentRow == 0 || currentRow == gridDimension - 1;
+        bool isBorderColumn = currentColumn == 0 || currentColumn == gridDimension - 1;
 
         if (bitGrid[characterIndex] == '\n')
         {
-            if (rowLengthCounter != expectedGridDimension)
+            if (currentRowLength != gridDimension)
             {
                 return CodecError::NotInAGrid;
             }
-            rowLengthCounter = 0;
-            rowNum++;
+            currentRowLength = 0;
+            rowCount++;
             continue;
         }
         else if (isBorderRow || isBorderColumn)
@@ -215,26 +215,27 @@ CodecResult BitGridCodec::extractBinaryBits(const string &bitGrid)
         }
         else if (bitGrid[characterIndex] == ZERO_BIT_CHAR || bitGrid[characterIndex] == ONE_BIT_CHAR)
         {
-            string curBlock;
+            string currentBitBlock;
+
             if (characterIndex + BIT_BLOCK_LENGTH > bitGrid.size())
             {
                 return CodecError::MissingData;
             }
             else
             {
-                curBlock = bitGrid.substr(characterIndex, BIT_BLOCK_LENGTH);
+                currentBitBlock = bitGrid.substr(characterIndex, BIT_BLOCK_LENGTH);
 
-                if (curBlock == ZERO_BIT_BLOCK)
+                if (currentBitBlock == ZERO_BIT_BLOCK)
                 {
                     extractedBits += "0";
-                    rowLengthCounter += BIT_BLOCK_LENGTH;
+                    currentRowLength += BIT_BLOCK_LENGTH;
                     characterIndex += BIT_BLOCK_LENGTH - 1;
                     continue;
                 }
-                else if (curBlock == ONE_BIT_BLOCK)
+                else if (currentBitBlock == ONE_BIT_BLOCK)
                 {
                     extractedBits += "1";
-                    rowLengthCounter += BIT_BLOCK_LENGTH;
+                    currentRowLength += BIT_BLOCK_LENGTH;
                     characterIndex += BIT_BLOCK_LENGTH - 1;
                     continue;
                 }
@@ -249,10 +250,10 @@ CodecResult BitGridCodec::extractBinaryBits(const string &bitGrid)
             return CodecError::InvalidCharacter;
         }
 
-        rowLengthCounter++;
+        currentRowLength++;
     }
 
-    if (rowNum != expectedGridDimension)
+    if (rowCount != gridDimension)
     {
         return CodecError::NotInAGrid;
     }
