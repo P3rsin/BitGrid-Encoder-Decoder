@@ -25,17 +25,6 @@ int printHelp()
     return 0;
 }
 
-int printProjectInfo()
-{
-    cout << "BitGrid Encoder/Decoder\n\n"
-         << "A command-line tool that encodes text into a visual grid of binary\n"
-         << "blocks and decodes valid BitGrids back into their original text.\n"
-         << "BitGrid data includes a format signature, payload length, and checksum\n"
-         << "to support validation during decoding.\n";
-
-    return 0;
-}
-
 int handleEncodeCommand(int argc, char *argv[])
 {
     string inputArgument;
@@ -46,7 +35,7 @@ int handleEncodeCommand(int argc, char *argv[])
     }
     else
     {
-        cout << "Error: no input provided for encoding.\n"
+        cerr << "Error: no input provided for encoding.\n"
              << "Run 'bitgrid help' for usage information.\n";
         return 1;
     }
@@ -63,7 +52,7 @@ int handleEncodeCommand(int argc, char *argv[])
         }
         else
         {
-            cout << "Error: '-f' requires a file path.\n"
+            cerr << "Error: '-f' requires a file path.\n"
                  << "Usage: bitgrid encode -f <file>\n";
             return 1;
         }
@@ -72,7 +61,7 @@ int handleEncodeCommand(int argc, char *argv[])
 
         if (!inputFile)
         {
-            cout << "Error: could not open file '" << filePath << "'.\n";
+            cerr << "Error: could not open file '" << filePath << "'.\n";
             return 1;
         }
 
@@ -81,7 +70,7 @@ int handleEncodeCommand(int argc, char *argv[])
 
         while (getline(inputFile, inputLine))
         {
-            inputText += inputLine;
+            inputText += inputLine + '\n';
         }
 
         cout << bitGridCodec.encode(inputText);
@@ -94,7 +83,7 @@ int handleEncodeCommand(int argc, char *argv[])
 
         while (getline(cin, inputLine))
         {
-            inputText = inputText + inputLine + '\n';
+            inputText = inputText + inputLine;
         }
 
         cout << bitGridCodec.encode(inputText);
@@ -106,7 +95,7 @@ int handleEncodeCommand(int argc, char *argv[])
         return 0;
     }
 
-    cout << "Error: encoding failed unexpectedly.\n";
+    cerr << "Error: encoding failed unexpectedly.\n";
     return 1;
 }
 
@@ -120,7 +109,7 @@ int handleDecodeCommand(int argc, char *argv[])
     }
     else
     {
-        cout << "Error: no BitGrid input provided for decoding.\n"
+        cerr << "Error: no BitGrid input provided for decoding.\n"
              << "Usage: bitgrid decode <file>\n"
              << "   or: bitgrid decode -\n";
         return 1;
@@ -135,7 +124,7 @@ int handleDecodeCommand(int argc, char *argv[])
 
         while (getline(cin, inputLine))
         {
-            bitGridInput = bitGridInput + inputLine + '\n';
+            bitGridInput = bitGridInput + inputLine;
         }
 
         cout << bitGridCodec.decode(bitGridInput) << '\n';
@@ -147,7 +136,7 @@ int handleDecodeCommand(int argc, char *argv[])
 
         if (!inputFile)
         {
-            cout << "Error: could not open file '" << inputArgument << "'.\n";
+            cerr << "Error: could not open file '" << inputArgument << "'.\n";
             return 1;
         }
 
@@ -163,7 +152,7 @@ int handleDecodeCommand(int argc, char *argv[])
         return 0;
     }
 
-    cout << "Error: decoding failed unexpectedly.\n";
+    cerr << "Error: decoding failed unexpectedly.\n";
     return 1;
 }
 
@@ -171,7 +160,7 @@ int main(int argc, char *argv[])
 {
     if (argc < 2)
     {
-        cout << "Error: no command provided.\n"
+        cerr << "Error: no command provided.\n"
              << "Run 'bitgrid help' for usage information.\n";
         return 1;
     }
@@ -186,17 +175,13 @@ int main(int argc, char *argv[])
     {
         return handleDecodeCommand(argc, argv);
     }
-    else if (command == "about")
-    {
-        return printProjectInfo();
-    }
     else if (command == "help")
     {
         return printHelp();
     }
     else
     {
-        cout << "Error: unknown command '" << command << "'.\n"
+        cerr << "Error: unknown command '" << command << "'.\n"
              << "Run 'bitgrid help' for usage information.\n";
         return 1;
     }
