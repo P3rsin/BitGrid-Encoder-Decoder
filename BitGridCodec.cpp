@@ -161,12 +161,11 @@ string BitGridCodec::buildBitGrid(const string &inputText)
     return bitGrid;
 }
 
-string BitGridCodec::encode(const string &inputText)
+CodecResult BitGridCodec::encode(const string &inputText)
 {
     if (inputText.size() > 65535)
     {
-        cout << "ERROR - input must be 65535 characters or fewer\n";
-        return "";
+        return CodecError::InputTooLarge;;
     }
 
     return buildBitGrid(inputText);
@@ -193,20 +192,20 @@ string BitGridCodec::extractBinaryBits(const string &bitGrid)
     return extractedBits;
 }
 
-string BitGridCodec::decode(const string &bitGrid)
+CodecResult BitGridCodec::decode(const string &bitGrid)
 {
     string extractedBits = extractBinaryBits(bitGrid);
 
     if (extractedBits.size() < HEADER_BITS)
     {
-        return "ERROR - missing or incomplete header";
+        return CodecError::IncompleteHeader;
     }
 
     string headerBits = extractedBits.substr(0, HEADER_BITS);
 
     if (binaryBitsToText(headerBits.substr(0, SIGNATURE_BITS)) != FORMAT_SIGNATURE)
     {
-        return "ERROR - invalid BitGrid signature";
+        return CodecError::InvalidSignature;
     }
 
     int payloadLength = binaryBitsToInteger(headerBits.substr(SIGNATURE_BITS, PAYLOAD_LENGTH_BITS));
@@ -214,7 +213,7 @@ string BitGridCodec::decode(const string &bitGrid)
 
     if (extractedBits.size() < HEADER_BITS + payloadBitCount)
     {
-        return "ERROR - missing data";
+        return CodecError::MissingData;
     }
 
     string payloadBits = extractedBits.substr(HEADER_BITS, payloadBitCount);
@@ -224,7 +223,7 @@ string BitGridCodec::decode(const string &bitGrid)
 
     if (storedChecksum != calculatedChecksum)
     {
-        return "ERROR - checksum mismatch";
+        return CodecError::ChecksumMismatch;
     }
 
     return decodedText;

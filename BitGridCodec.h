@@ -1,12 +1,23 @@
 #pragma once
 #include <cstddef>
 #include <string>
+#include <variant>
+
+enum class CodecError {
+  InputTooLarge,
+  IncompleteHeader,
+  InvalidSignature,
+  MissingData,
+  ChecksumMismatch
+};
+
+using CodecResult = std::variant<std::string, CodecError>;
 
 class BitGridCodec
 {
   public:
-    std::string encode(const std::string &inputText);
-    std::string decode(const std::string &bitGrid);
+    CodecResult encode(const std::string &inputText);
+    CodecResult decode(const std::string &bitGrid);
 
   private:
     int calculateChecksum(const std::string &text);

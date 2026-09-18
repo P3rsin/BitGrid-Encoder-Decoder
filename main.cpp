@@ -41,6 +41,8 @@ int handleEncodeCommand(int argc, char *argv[])
     }
 
     BitGridCodec bitGridCodec;
+    string inputText;
+    string inputLine;
 
     if (inputArgument == "-f")
     {
@@ -65,38 +67,36 @@ int handleEncodeCommand(int argc, char *argv[])
             return 1;
         }
 
-        string inputText;
-        string inputLine;
-
         while (getline(inputFile, inputLine))
         {
             inputText += inputLine + '\n';
         }
-
-        cout << bitGridCodec.encode(inputText);
-        return 0;
     }
     else if (inputArgument == "-")
     {
-        string inputText;
-        string inputLine;
-
         while (getline(cin, inputLine))
         {
             inputText = inputText + inputLine;
         }
-
-        cout << bitGridCodec.encode(inputText);
-        return 0;
     }
     else
     {
-        cout << bitGridCodec.encode(inputArgument);
-        return 0;
+        inputText = inputArgument;
     }
 
-    cerr << "Error: encoding failed unexpectedly.\n";
-    return 1;
+    CodecResult result = bitGridCodec.encode(inputText);
+
+    if (holds_alternative<CodecError>(result))
+    {
+        if (get<CodecError>(result) == CodecError::InputTooLarge)
+        {
+            cerr << "input must be 65535 characters or fewer\n";
+        }
+        return 1;
+    }
+
+    cout << get<string>(result);
+    return 0;
 }
 
 int handleDecodeCommand(int argc, char *argv[])
@@ -116,19 +116,15 @@ int handleDecodeCommand(int argc, char *argv[])
     }
 
     BitGridCodec bitGridCodec;
+    string bitGridInput;
+    string inputLine;
 
     if (inputArgument == "-")
     {
-        string bitGridInput;
-        string inputLine;
-
         while (getline(cin, inputLine))
         {
             bitGridInput = bitGridInput + inputLine;
         }
-
-        cout << bitGridCodec.decode(bitGridInput) << '\n';
-        return 0;
     }
     else
     {
@@ -140,20 +136,38 @@ int handleDecodeCommand(int argc, char *argv[])
             return 1;
         }
 
-        string bitGridInput;
-        string inputLine;
-
         while (getline(inputFile, inputLine))
         {
             bitGridInput += inputLine + '\n';
         }
-
-        cout << bitGridCodec.decode(bitGridInput);
-        return 0;
     }
 
-    cerr << "Error: decoding failed unexpectedly.\n";
-    return 1;
+    CodecResult result = bitGridCodec.decode(bitGridInput);
+
+    if (holds_alternative<CodecError>(result))
+    {
+        if (get<CodecError>(result) == CodecError::IncompleteHeader)
+        {
+            cerr << "ERROR - missing or incomplete header\n";
+        }
+        else if (get<CodecError>(result) == CodecError::InvalidSignature)
+        {
+            cerr << "ERROR - invalid bitgrid signature\n";
+        }
+        else if (get<CodecError>(result) == CodecError::MissingData)
+        {
+            cerr << "ERROR - missing data\n";
+        }
+        else if (get<CodecError>(result) == CodecError::ChecksumMismatch)
+        {
+            cerr << "ERROR - checksums don't match\n";
+        }
+
+        return 1;
+    }
+
+    cout << get<string>(result);
+    return 0;
 }
 
 int main(int argc, char *argv[])
