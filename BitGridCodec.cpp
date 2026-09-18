@@ -163,7 +163,7 @@ string BitGridCodec::buildBitGrid(const string &inputText)
 
 CodecResult BitGridCodec::encode(const string &inputText)
 {
-    if (inputText.size() > 65535)
+    if (inputText.size() > MAX_PAYLOAD_SIZE)
     {
         return CodecError::InputTooLarge;
     }

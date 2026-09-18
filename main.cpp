@@ -46,6 +46,11 @@ int handleEncodeCommand(int argc, char *argv[])
                  << "Usage: bitgrid encode -f <file>\n";
             return 1;
         }
+        else if (argc > 4)
+        {
+            cerr << "too many args";
+            return 1;
+        }
 
         string inputFilePath = argv[3];
         ifstream inputFile(inputFilePath);
@@ -58,11 +63,17 @@ int handleEncodeCommand(int argc, char *argv[])
 
         while (getline(inputFile, line))
         {
-            textToEncode += line + '\n';
+            textToEncode += line;
         }
     }
     else if (sourceArgument == "-")
     {
+        if (argc > 3)
+        {
+            cerr << "too many args";
+            return 1;
+        }
+
         while (getline(cin, line))
         {
             textToEncode += line;
@@ -70,6 +81,11 @@ int handleEncodeCommand(int argc, char *argv[])
     }
     else
     {
+        if (argc > 3)
+        {
+            cerr << "too many args";
+            return 1;
+        }
         textToEncode = sourceArgument;
     }
 
@@ -82,7 +98,7 @@ int handleEncodeCommand(int argc, char *argv[])
         switch (codecError)
         {
         case CodecError::InputTooLarge:
-            cerr << "bitgrid: error: input must be 65,535 bytes or fewer\n";
+            cerr << "bitgrid: error: input must be under max payload size\n";
             break;
 
         default:
@@ -131,7 +147,7 @@ int handleDecodeCommand(int argc, char *argv[])
 
         while (getline(inputFile, line))
         {
-            bitGridText += line + '\n';
+            bitGridText += line;
         }
     }
 

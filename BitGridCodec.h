@@ -1,14 +1,16 @@
 #pragma once
+#include <cmath>
 #include <cstddef>
 #include <string>
 #include <variant>
 
-enum class CodecError {
-  InputTooLarge,
-  IncompleteHeader,
-  InvalidSignature,
-  MissingData,
-  ChecksumMismatch
+enum class CodecError
+{
+    InputTooLarge,
+    IncompleteHeader,
+    InvalidSignature,
+    MissingData,
+    ChecksumMismatch
 };
 
 using CodecResult = std::variant<std::string, CodecError>;
@@ -29,8 +31,9 @@ class BitGridCodec
     inline static const std::string ZERO_BIT_BLOCK = "▒▒";
     inline static const std::string ONE_BIT_BLOCK = "██";
 
-    static constexpr size_t PAYLOAD_LENGTH_BITS = 16;
-    static constexpr size_t CHECKSUM_BITS = 16;
-    static constexpr size_t SIGNATURE_BITS = 32;
-    static constexpr size_t HEADER_BITS = SIGNATURE_BITS + PAYLOAD_LENGTH_BITS + CHECKSUM_BITS;
+    static constexpr std::size_t PAYLOAD_LENGTH_BITS = 16;
+    static constexpr std::size_t MAX_PAYLOAD_SIZE = (std::size_t{1} << PAYLOAD_LENGTH_BITS) - 1; // bit shift
+    static constexpr std::size_t CHECKSUM_BITS = 16;
+    static constexpr std::size_t SIGNATURE_BITS = 32;
+    static constexpr std::size_t HEADER_BITS = SIGNATURE_BITS + PAYLOAD_LENGTH_BITS + CHECKSUM_BITS;
 };
