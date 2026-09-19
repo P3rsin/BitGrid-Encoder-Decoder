@@ -17,6 +17,32 @@ void expect(bool condition, const string &testName)
     }
 }
 
+void expectError(const CodecResult &result, CodecError expectedError, const string &testName)
+{
+    expect(holds_alternative<CodecError>(result) && get<CodecError>(result) == expectedError, testName);
+}
+
+void expectRoundTrip(BitGridCodec &codec, const string &input, const string &testName)
+{
+    CodecResult encoded = codec.encode(input);
+
+    if (!holds_alternative<string>(encoded))
+    {
+        expect(false, testName + " (encode failed)");
+        return;
+    }
+
+    CodecResult decoded = codec.decode(get<string>(encoded));
+
+    if (!holds_alternative<string>(decoded))
+    {
+        expect(false, testName + " (decode failed)");
+        return;
+    }
+
+    expect(get<string>(decoded) == input, testName);
+}
+
 int main()
 {
     BitGridCodec codec;
