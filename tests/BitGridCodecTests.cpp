@@ -97,8 +97,14 @@ int main()
     string badSideBorder = encodedHello;
     size_t firstNewline = badSideBorder.find('\n');
     badSideBorder[firstNewline + 1] = 'o';
-    
+
     expectError(codec.decode(badSideBorder), CodecError::MalformedBorder, "malformed side border is rejected");
+
+    // Should also eventually test for:
+    // - Dimensions
+    // - Checksum
+    // - Bit blocks
+    // - The header
 
     // Final result
     if (failures == 0)
