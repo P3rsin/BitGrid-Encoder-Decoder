@@ -68,7 +68,38 @@ int main()
 
     expect(holds_alternative<string>(maxPayloadResult), "65535-byte payload succeeds");
     expectError(codec.encode(oversizedPayload), CodecError::InputTooLarge, "65536-byte payload returns InputTooLarge");
+
+    // Empty / incomplete input
+    expectError(codec.decode(""), CodecError::MissingData, "empty grid returns MissingData");
+
+    const string tinyGrid = "+------+\n|......|\n|......|\n|......|\n+------+\n";
+    expectError(codec.decode(tinyGrid), CodecError::IncompleteHeader,
+                "grid with fewer than 64 data bits returns IncompleteHeader");
+
+    // Grid created to intentionally corrupt
+    CodecResult encodedHelloResult = codec.encode("Hello");
+
+    if (!holds_alternative<string>(encodedHelloResult))
+    {
+        cerr << "FAIL: setup encode for malformed-grid tests\n";
+        return 1;
+    }
+
+    const string encodedHello = get<string>(encodedHelloResult);
+
+    // Border validation
+
+    string badTopBorder = encodedHello;
+    badTopBorder[0] = 'o';
+
+    expectError(codec.decode(badTopBorder), CodecError::MalformedBorder, "malformed top border is rejected");
+
+    string badSideBorder = encodedHello;
+    size_t firstNewline = badSideBorder.find('\n');
+    badSideBorder[firstNewline + 1] = 'o';
     
+    expectError(codec.decode(badSideBorder), CodecError::MalformedBorder, "malformed side border is rejected");
+
     // Final result
     if (failures == 0)
     {
