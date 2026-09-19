@@ -47,9 +47,35 @@ int main()
 {
     BitGridCodec codec;
 
-    CodecResult encoded = codec.encode("Hello");
-    expect(holds_alternative<string>(encoded), "encode Hello succeeds");
+    // Round-trip tests
+    expectRoundTrip(codec, "", "empty string round trip");
+    expectRoundTrip(codec, "Hello", "simple text round trip");
+    expectRoundTrip(codec, "Hello world", "text with spaces round trip");
+    expectRoundTrip(codec, "line one\nline two", "multiline text round trip");
+    expectRoundTrip(codec, "line one\nline two\n", "trailing newline round trip");
 
-    cout << "All tests passed\n";
-    return 0;
+    string binaryPayload;
+    binaryPayload.push_back('\0');
+    binaryPayload.push_back(static_cast<char>(0xFF));
+    binaryPayload.push_back('A');
+
+    expectRoundTrip(codec, binaryPayload, "binary byte values round trip");
+
+    // Payload-size boundaries
+    string maxPayload(65535, 'x');
+    string oversizedPayload(65536, 'x');
+    CodecResult maxPayloadResult = codec.encode(maxPayload);
+
+    expect(holds_alternative<string>(maxPayloadResult), "65535-byte payload succeeds");
+    expectError(codec.encode(oversizedPayload), CodecError::InputTooLarge, "65536-byte payload returns InputTooLarge");
+    
+    // Final result
+    if (failures == 0)
+    {
+        cout << "All tests passed\n";
+        return 0;
+    }
+
+    cerr << failures << " test(s) failed\n";
+    return 1;
 }
