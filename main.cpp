@@ -42,8 +42,6 @@ int handleEncodeCommand(int argc, char *argv[])
     }
 
     string sourceArgument = argv[2];
-    BitGridCodec codec;
-
     istream *streamToUse = nullptr;
     ifstream inputFile;
     istringstream strStream;
@@ -90,7 +88,7 @@ int handleEncodeCommand(int argc, char *argv[])
 
     ostringstream sstream;
     sstream << streamToUse->rdbuf();
-    CodecResult encodeResult = codec.encode(sstream.str());
+    CodecResult encodeResult = BitGridCodec::encode(sstream.str());
 
     if (holds_alternative<CodecError>(encodeResult))
     {
@@ -125,8 +123,6 @@ int handleDecodeCommand(int argc, char *argv[])
     }
 
     string sourceArgument = argv[2];
-    BitGridCodec codec;
-
     istream *streamToUse = nullptr;
     ifstream inputFile;
 
@@ -155,7 +151,7 @@ int handleDecodeCommand(int argc, char *argv[])
 
     ostringstream sstream;
     sstream << streamToUse->rdbuf();
-    CodecResult decodeResult = codec.decode(sstream.str());
+    CodecResult decodeResult = BitGridCodec::decode(sstream.str());
 
     if (holds_alternative<CodecError>(decodeResult))
     {

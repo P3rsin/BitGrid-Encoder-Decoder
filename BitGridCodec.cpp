@@ -9,6 +9,26 @@ namespace
 {
 constexpr size_t BITS_PER_BYTE = 8;
 
+const string FORMAT_SIGNATURE = "HABG";
+
+constexpr char BORDER_CORNER = '+';
+constexpr char BORDER_HORIZONTAL = '-';
+constexpr char BORDER_VERTICAL = '|';
+constexpr char ZERO_BIT_CHAR = '.';
+constexpr char ONE_BIT_CHAR = '#';
+
+constexpr size_t BIT_BLOCK_LENGTH = 2;
+const string ZERO_BIT_BLOCK(BIT_BLOCK_LENGTH, ZERO_BIT_CHAR);
+const string ONE_BIT_BLOCK(BIT_BLOCK_LENGTH, ONE_BIT_CHAR);
+
+constexpr size_t PAYLOAD_LENGTH_BITS = 16;
+constexpr size_t CHECKSUM_BITS = 16;
+constexpr size_t SIGNATURE_BITS = 32;
+
+constexpr size_t MAX_PAYLOAD_SIZE = (size_t{1} << PAYLOAD_LENGTH_BITS) - 1;
+constexpr size_t CHECKSUM_MODULUS = (size_t{1} << CHECKSUM_BITS);
+constexpr size_t HEADER_BITS = SIGNATURE_BITS + PAYLOAD_LENGTH_BITS + CHECKSUM_BITS;
+
 string integerToBinaryBits(int value, size_t bitWidth)
 {
     string binaryBits(bitWidth, '0');
@@ -76,7 +96,9 @@ string binaryBitsToText(const string &binaryBits)
 }
 } // namespace
 
-int BitGridCodec::calculateChecksum(const string &text) const
+namespace BitGridCodec
+{
+int calculateChecksum(const string &text)
 {
     int checksum = 0;
 
@@ -89,14 +111,14 @@ int BitGridCodec::calculateChecksum(const string &text) const
     return checksum;
 }
 
-string BitGridCodec::buildHeaderBits(const string &inputText) const
+string buildHeaderBits(const string &inputText)
 {
     const string payloadLengthBits = integerToBinaryBits(inputText.size(), PAYLOAD_LENGTH_BITS);
     const string checksumBits = integerToBinaryBits(calculateChecksum(inputText), CHECKSUM_BITS);
     return textToBinaryBits(FORMAT_SIGNATURE) + payloadLengthBits + checksumBits;
 }
 
-string BitGridCodec::buildBitGrid(const string &inputText) const
+string buildBitGrid(const string &inputText)
 {
     const string encodedBits = buildHeaderBits(inputText) + textToBinaryBits(inputText);
     const size_t totalBitCount = encodedBits.size();
@@ -152,7 +174,7 @@ string BitGridCodec::buildBitGrid(const string &inputText) const
     return bitGrid;
 }
 
-CodecResult BitGridCodec::encode(const string &inputText) const
+CodecResult encode(const string &inputText)
 {
     if (inputText.size() > MAX_PAYLOAD_SIZE)
     {
@@ -162,7 +184,7 @@ CodecResult BitGridCodec::encode(const string &inputText) const
     return buildBitGrid(inputText);
 }
 
-CodecResult BitGridCodec::extractBinaryBits(const string &bitGrid) const
+CodecResult extractBinaryBits(const string &bitGrid)
 {
     vector<string> rows;
     istringstream stream(bitGrid);
@@ -245,7 +267,7 @@ CodecResult BitGridCodec::extractBinaryBits(const string &bitGrid) const
     return extractedBits;
 }
 
-CodecResult BitGridCodec::decode(const string &bitGrid) const
+CodecResult decode(const string &bitGrid)
 {
     const CodecResult extractionResult = extractBinaryBits(bitGrid);
 
@@ -278,7 +300,8 @@ CodecResult BitGridCodec::decode(const string &bitGrid) const
 
     const string payloadBits = extractedBits.substr(HEADER_BITS, payloadBitCount);
     const string decodedText = binaryBitsToText(payloadBits);
-    const int storedChecksum = binaryBitsToInteger(headerBits.substr(SIGNATURE_BITS + PAYLOAD_LENGTH_BITS, CHECKSUM_BITS));
+    const int storedChecksum =
+        binaryBitsToInteger(headerBits.substr(SIGNATURE_BITS + PAYLOAD_LENGTH_BITS, CHECKSUM_BITS));
     const int calculatedChecksum = calculateChecksum(decodedText);
 
     if (storedChecksum != calculatedChecksum)
@@ -288,3 +311,4 @@ CodecResult BitGridCodec::decode(const string &bitGrid) const
 
     return decodedText;
 }
+} // namespace BitGridCodec

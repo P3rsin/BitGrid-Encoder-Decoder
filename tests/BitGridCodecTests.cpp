@@ -22,9 +22,9 @@ void expectError(const CodecResult &result, CodecError expectedError, const stri
     expect(holds_alternative<CodecError>(result) && get<CodecError>(result) == expectedError, testName);
 }
 
-void expectRoundTrip(BitGridCodec &codec, const string &input, const string &testName)
+void expectRoundTrip(const string &input, const string &testName)
 {
-    CodecResult encoded = codec.encode(input);
+    CodecResult encoded = BitGridCodec::encode(input);
 
     if (!holds_alternative<string>(encoded))
     {
@@ -32,7 +32,7 @@ void expectRoundTrip(BitGridCodec &codec, const string &input, const string &tes
         return;
     }
 
-    CodecResult decoded = codec.decode(get<string>(encoded));
+    CodecResult decoded = BitGridCodec::decode(get<string>(encoded));
 
     if (!holds_alternative<string>(decoded))
     {
@@ -45,39 +45,37 @@ void expectRoundTrip(BitGridCodec &codec, const string &input, const string &tes
 
 int main()
 {
-    BitGridCodec codec;
-
     // Round-trip tests
-    expectRoundTrip(codec, "", "empty string round trip");
-    expectRoundTrip(codec, "Hello", "simple text round trip");
-    expectRoundTrip(codec, "Hello world", "text with spaces round trip");
-    expectRoundTrip(codec, "line one\nline two", "multiline text round trip");
-    expectRoundTrip(codec, "line one\nline two\n", "trailing newline round trip");
+    expectRoundTrip("", "empty string round trip");
+    expectRoundTrip("Hello", "simple text round trip");
+    expectRoundTrip("Hello world", "text with spaces round trip");
+    expectRoundTrip("line one\nline two", "multiline text round trip");
+    expectRoundTrip("line one\nline two\n", "trailing newline round trip");
 
     string binaryPayload;
     binaryPayload.push_back('\0');
     binaryPayload.push_back(static_cast<char>(0xFF));
     binaryPayload.push_back('A');
 
-    expectRoundTrip(codec, binaryPayload, "binary byte values round trip");
+    expectRoundTrip(binaryPayload, "binary byte values round trip");
 
     // Payload-size boundaries
     string maxPayload(65535, 'x');
     string oversizedPayload(65536, 'x');
-    CodecResult maxPayloadResult = codec.encode(maxPayload);
+    CodecResult maxPayloadResult = BitGridCodec::encode(maxPayload);
 
     expect(holds_alternative<string>(maxPayloadResult), "65535-byte payload succeeds");
-    expectError(codec.encode(oversizedPayload), CodecError::InputTooLarge, "65536-byte payload returns InputTooLarge");
+    expectError(BitGridCodec::encode(oversizedPayload), CodecError::InputTooLarge, "65536-byte payload returns InputTooLarge");
 
     // Empty / incomplete input
-    expectError(codec.decode(""), CodecError::MissingData, "empty grid returns MissingData");
+    expectError(BitGridCodec::decode(""), CodecError::MissingData, "empty grid returns MissingData");
 
     const string tinyGrid = "+------+\n|......|\n|......|\n|......|\n+------+\n";
-    expectError(codec.decode(tinyGrid), CodecError::IncompleteHeader,
+    expectError(BitGridCodec::decode(tinyGrid), CodecError::IncompleteHeader,
                 "grid with fewer than 64 data bits returns IncompleteHeader");
 
     // Grid created to intentionally corrupt
-    CodecResult encodedHelloResult = codec.encode("Hello");
+    CodecResult encodedHelloResult = BitGridCodec::encode("Hello");
 
     if (!holds_alternative<string>(encodedHelloResult))
     {
@@ -92,13 +90,13 @@ int main()
     string badTopBorder = encodedHello;
     badTopBorder[0] = 'o';
 
-    expectError(codec.decode(badTopBorder), CodecError::MalformedBorder, "malformed top border is rejected");
+    expectError(BitGridCodec::decode(badTopBorder), CodecError::MalformedBorder, "malformed top border is rejected");
 
     string badSideBorder = encodedHello;
     size_t firstNewline = badSideBorder.find('\n');
     badSideBorder[firstNewline + 1] = 'o';
 
-    expectError(codec.decode(badSideBorder), CodecError::MalformedBorder, "malformed side border is rejected");
+    expectError(BitGridCodec::decode(badSideBorder), CodecError::MalformedBorder, "malformed side border is rejected");
 
     // Should also eventually test for:
     // - Dimensions
