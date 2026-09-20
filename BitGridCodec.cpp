@@ -10,8 +10,6 @@ namespace BitGridCodec
 namespace
 {
 // Format constants
-constexpr size_t BITS_PER_BYTE = 8;
-
 const string FORMAT_SIGNATURE = "HABG";
 
 constexpr char BORDER_CORNER = '+';
@@ -24,6 +22,7 @@ constexpr size_t BIT_BLOCK_LENGTH = 2;
 const string ZERO_BIT_BLOCK(BIT_BLOCK_LENGTH, ZERO_BIT_CHAR);
 const string ONE_BIT_BLOCK(BIT_BLOCK_LENGTH, ONE_BIT_CHAR);
 
+constexpr size_t BITS_PER_BYTE = 8;
 constexpr size_t PAYLOAD_LENGTH_BITS = 16;
 constexpr size_t CHECKSUM_BITS = 16;
 constexpr size_t SIGNATURE_BITS = 32;
