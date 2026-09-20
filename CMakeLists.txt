@@ -5,7 +5,6 @@ project(BitGridEncoderDecoder
     LANGUAGES CXX
 )
 
-# library
 add_library(bitgrid_codec
     BitGridCodec.cpp
     BitGridCodec.h
@@ -17,20 +16,12 @@ target_include_directories(bitgrid_codec PUBLIC
 
 target_compile_features(bitgrid_codec PUBLIC cxx_std_17)
 
-target_compile_options(bitgrid_codec PRIVATE
-    -Wall
-    -Wextra
-    -Wpedantic
-)
-
-# cli
 add_executable(bitgrid
     main.cpp
 )
 
 target_link_libraries(bitgrid PRIVATE bitgrid_codec)
 
-# testing
 enable_testing()
 
 add_executable(bitgrid_tests
@@ -43,3 +34,11 @@ add_test(
     NAME BitGridCodecTests
     COMMAND bitgrid_tests
 )
+
+foreach(target bitgrid_codec bitgrid bitgrid_tests)
+    target_compile_options(${target} PRIVATE
+        -Wall
+        -Wextra
+        -Wpedantic
+    )
+endforeach()

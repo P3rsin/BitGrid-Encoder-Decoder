@@ -9,6 +9,7 @@ namespace BitGridCodec
 {
 namespace
 {
+// Format constants
 constexpr size_t BITS_PER_BYTE = 8;
 
 const string FORMAT_SIGNATURE = "HABG";
@@ -31,7 +32,8 @@ constexpr size_t MAX_PAYLOAD_SIZE = (size_t{1} << PAYLOAD_LENGTH_BITS) - 1;
 constexpr size_t CHECKSUM_MODULUS = (size_t{1} << CHECKSUM_BITS);
 constexpr size_t HEADER_BITS = SIGNATURE_BITS + PAYLOAD_LENGTH_BITS + CHECKSUM_BITS;
 
-string integerToBinaryBits(int value, size_t bitWidth)
+// Binary conversion
+string integerToBinaryBits(size_t value, size_t bitWidth)
 {
     string binaryBits(bitWidth, '0');
 
@@ -62,9 +64,9 @@ string textToBinaryBits(const string &text)
     return binaryBits;
 }
 
-int binaryBitsToInteger(const string &binaryBits)
+size_t binaryBitsToInteger(const string &binaryBits)
 {
-    int integerValue = 0;
+    size_t integerValue = 0;
 
     for (const char bit : binaryBits)
     {
@@ -97,13 +99,14 @@ string binaryBitsToText(const string &binaryBits)
     return decodedText;
 }
 
-int calculateChecksum(const string &text)
+// Encoding / decoding helpers
+size_t calculateChecksum(const string &text)
 {
-    int checksum = 0;
+    size_t checksum = 0;
 
     for (size_t characterIndex = 0; characterIndex < text.size(); characterIndex++)
     {
-        const int byteValue = static_cast<unsigned char>(text[characterIndex]);
+        const size_t byteValue = static_cast<unsigned char>(text[characterIndex]);
         checksum = (checksum + (byteValue * (characterIndex + 1))) % CHECKSUM_MODULUS;
     }
 
