@@ -20,14 +20,14 @@ using CodecResult = std::variant<std::string, CodecError>;
 class BitGridCodec
 {
   public:
-    CodecResult encode(const std::string &inputText);
-    CodecResult decode(const std::string &bitGrid);
+    CodecResult encode(const std::string &inputText) const;
+    CodecResult decode(const std::string &bitGrid) const;
 
   private:
-    int calculateChecksum(const std::string &text);
-    std::string buildHeaderBits(const std::string &inputText);
-    std::string buildBitGrid(const std::string &inputText);
-    CodecResult extractBinaryBits(const std::string &bitGrid);
+    int calculateChecksum(const std::string &text) const;
+    std::string buildHeaderBits(const std::string &inputText) const;
+    std::string buildBitGrid(const std::string &inputText) const;
+    CodecResult extractBinaryBits(const std::string &bitGrid)const;
 
     inline static const std::string FORMAT_SIGNATURE = "HABG";
 
