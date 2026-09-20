@@ -303,9 +303,9 @@ CodecResult decode(const string &bitGrid)
 
     const string payloadBits = extractedBits.substr(HEADER_BITS, payloadBitCount);
     const string decodedText = binaryBitsToText(payloadBits);
-    const int storedChecksum =
+    const size_t storedChecksum =
         binaryBitsToInteger(headerBits.substr(SIGNATURE_BITS + PAYLOAD_LENGTH_BITS, CHECKSUM_BITS));
-    const int calculatedChecksum = calculateChecksum(decodedText);
+    const size_t calculatedChecksum = calculateChecksum(decodedText);
 
     if (storedChecksum != calculatedChecksum)
     {
