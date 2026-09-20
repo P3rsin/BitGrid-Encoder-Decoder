@@ -5,6 +5,8 @@
 
 using namespace std;
 
+namespace BitGridCodec
+{
 namespace
 {
 constexpr size_t BITS_PER_BYTE = 8;
@@ -94,10 +96,7 @@ string binaryBitsToText(const string &binaryBits)
 
     return decodedText;
 }
-} // namespace
 
-namespace BitGridCodec
-{
 int calculateChecksum(const string &text)
 {
     int checksum = 0;
@@ -172,16 +171,6 @@ string buildBitGrid(const string &inputText)
     }
 
     return bitGrid;
-}
-
-CodecResult encode(const string &inputText)
-{
-    if (inputText.size() > MAX_PAYLOAD_SIZE)
-    {
-        return CodecError::InputTooLarge;
-    }
-
-    return buildBitGrid(inputText);
 }
 
 CodecResult extractBinaryBits(const string &bitGrid)
@@ -265,6 +254,17 @@ CodecResult extractBinaryBits(const string &bitGrid)
     }
 
     return extractedBits;
+}
+} // namespace
+
+CodecResult encode(const string &inputText)
+{
+    if (inputText.size() > MAX_PAYLOAD_SIZE)
+    {
+        return CodecError::InputTooLarge;
+    }
+
+    return buildBitGrid(inputText);
 }
 
 CodecResult decode(const string &bitGrid)
