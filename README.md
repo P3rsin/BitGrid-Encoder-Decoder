@@ -2,7 +2,7 @@
 
 **BitGrid** is a small C++17 command-line utility that encodes byte-oriented input into a custom two-dimensional binary format and decodes it with structural validation, metadata checks, and checksum verification.
 
-The project is intentionally small, but is designed as a complete CLI utility rather than an interactive menu program: it supports literal arguments, files, standard input/output, typed codec errors, and a reproducible CMake build.
+The project is intentionally small, but is designed as a complete CLI utility rather than an interactive menu program: it supports literal arguments, files, standard input/output, typed codec errors, automated tests, and a reproducible CMake build.
 
 ## Features
 
@@ -17,6 +17,8 @@ The project is intentionally small, but is designed as a complete CLI utility ra
 - Reject incomplete headers, invalid signatures, truncated payloads, and checksum mismatches
 - Preserve multiline input when reading from files or standard input
 - Build with CMake and the C++17 standard
+- Automated codec tests through CTest
+- Continuous integration through GitHub Actions
 - No external library dependencies
 
 ## Build
@@ -51,6 +53,18 @@ To see the available commands:
 ```bash
 ./build/bitgrid help
 ```
+
+### Run tests
+
+The project includes automated codec tests registered with CTest:
+
+```bash
+ctest --test-dir build --output-on-failure
+```
+
+The tests cover round-trip encoding and decoding, binary byte values, payload-size boundaries, incomplete input, and malformed borders.
+
+A GitHub Actions workflow automatically builds the project and runs the test suite on pushes and pull requests.
 
 ## Usage
 
@@ -239,14 +253,21 @@ BitGridCodec
 encoded or decoded data
 ```
 
-`BitGridCodec` does not retain the previously encoded or decoded payload as object state. Each encode/decode operation receives its input directly and returns either a result or a `CodecError` through `std::variant`.
+The codec is exposed through a small stateless namespace API consisting of `BitGridCodec::encode()` and `BitGridCodec::decode()`. Each operation receives its input directly and returns either encoded or decoded data or a `CodecError` through `std::variant`.
 
-Low-level binary conversion helpers are kept internal to the codec implementation.
+Implementation details such as binary conversion, checksum calculation, header construction, grid construction, and parsing are kept internal to `BitGridCodec.cpp`.
 
 ## Project Structure
 
 ```text
 .
+├── .github/
+│   └── workflows/
+│       └── build-and-test.yml
+├── tests/
+│   └── BitGridCodecTests.cpp
+├── .clang-format
+├── .gitignore
 ├── BitGridCodec.cpp
 ├── BitGridCodec.h
 ├── CMakeLists.txt
@@ -259,6 +280,7 @@ Low-level binary conversion helpers are kept internal to the codec implementatio
 - Payload size is limited to **65,535 bytes** by the 16-bit length field.
 - The checksum provides basic error detection only.
 - Input is byte-oriented rather than Unicode-code-point-aware.
+- The decoder validates that the grid is square and structurally well-formed, but does not currently require the smallest possible grid dimensions for the declared payload.
 - Padding cells are generated as `1` blocks, but padding contents are not currently validated during decoding.
 - BitGrid is a custom format and is not compatible with QR codes or other standardized barcode formats.
 
