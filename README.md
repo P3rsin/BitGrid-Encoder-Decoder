@@ -1,137 +1,56 @@
 # BitGrid
 
-**BitGrid** is a small C++17 command-line utility that encodes byte-oriented input into a custom two-dimensional binary format and decodes it with structural validation, metadata checks, and checksum verification.
+BitGrid is a C++17 command-line utility that encodes bytes as a bordered ASCII grid and decodes them back to their original byte values. It accepts literal arguments, files, and standard input. The format supports up to 65,535 payload bytes and includes a 16-bit checksum for accidental corruption detection.
 
-The project is intentionally small, but is designed as a complete CLI utility rather than an interactive menu program: it supports literal arguments, files, standard input/output, typed codec errors, automated tests, and a reproducible CMake build.
+## Build and install
 
-## Features
+Use CMake 3.16 or newer and a C++17 compiler. The CI workflow covers GCC and Clang on Linux, AppleClang on macOS, and MSVC on Windows. BitGrid and its tests require no third-party libraries or test framework.
 
-- Encode text or file contents into a custom BitGrid representation
-- Decode BitGrid files or data read from standard input
-- Pipe and redirect data through standard Unix-style streams
-- Store a 64-bit metadata header containing:
-  - a 32-bit format signature
-  - a 16-bit payload length
-  - a 16-bit checksum
-- Validate grid dimensions, borders, and encoded bit blocks
-- Reject incomplete headers, invalid signatures, truncated payloads, and checksum mismatches
-- Preserve multiline input when reading from files or standard input
-- Build with CMake and the C++17 standard
-- Automated codec tests through CTest
-- Continuous integration through GitHub Actions
-- No external library dependencies
-
-## Build
-
-### Requirements
-
-- CMake 3.16 or newer
-- A C++17-compatible compiler such as GCC or Clang
-
-Clone the repository:
-
-```bash
-git clone https://github.com/P3rsin/BitGrid-Encoder-Decoder.git
-cd BitGrid-Encoder-Decoder
+```sh
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+cmake --build build --config Release
+cmake --install build --config Release --prefix ./build/install
 ```
 
-Configure and build:
-
-```bash
-cmake -S . -B build
-cmake --build build
-```
-
-The executable will be created at:
-
-```text
-./build/bitgrid
-```
-
-To see the available commands:
-
-```bash
-./build/bitgrid help
-```
-
-### Run tests
-
-The project includes automated codec tests registered with CTest:
-
-```bash
-ctest --test-dir build --output-on-failure
-```
-
-The tests cover round-trip encoding and decoding, binary byte values, payload-size boundaries, incomplete input, and malformed borders.
-
-A GitHub Actions workflow automatically builds the project and runs the test suite on pushes and pull requests.
+With a single-configuration generator the executable is `build/bitgrid`. With Visual Studio it is `build/Release/bitgrid.exe`. The example install places the executable in `build/install/bin`. Use the appropriate executable path in the examples below if `bitgrid` is outside your `PATH`.
 
 ## Usage
 
 ```text
-bitgrid encode <text>        Encode literal text into a BitGrid
-bitgrid encode -f <file>     Encode the contents of a file
-bitgrid encode -             Encode data read from standard input
-
-bitgrid decode <file>        Decode a BitGrid file
-bitgrid decode -             Decode a BitGrid read from standard input
-
-bitgrid help                 Display command help
+bitgrid encode <text>
+bitgrid encode -- <text>
+bitgrid encode -f <file>
+bitgrid encode -
+bitgrid decode <file>
+bitgrid decode -- <file>
+bitgrid decode -
+bitgrid help
+bitgrid --help
+bitgrid --version
 ```
 
-When running directly from the build directory, use `./build/bitgrid` in place of `bitgrid`.
+Quote literal text and paths that contain spaces. Use `encode -- -` or `encode -- -f` to encode those arguments literally. Use `decode -- -` to open a file named `-`.
 
-### Encode literal text
-
-```bash
-./build/bitgrid encode "Hello world"
+```sh
+bitgrid encode "Hello world"
+bitgrid encode -f "input file.bin" > data.bgrid
+bitgrid decode data.bgrid > restored.bin
+printf 'first\nsecond' | bitgrid encode - | bitgrid decode -
+bitgrid decode - < data.bgrid > restored.bin
 ```
 
-Multiword text should be quoted so the shell passes it as one argument.
+File and standard-stream I/O preserve bytes, including NUL, CRLF sequences in the payload, and UTF-8. On Windows, use byte-preserving redirection or pipelines, such as those in `cmd.exe`, for binary data. Literal arguments and file names on Windows use the narrow C runtime encoding. Use a file or standard input to supply arbitrary payload bytes.
 
-### Encode a file
-
-```bash
-./build/bitgrid encode -f input.txt > encoded.bgrid
-```
-
-The encoded BitGrid is written to standard output, so normal shell redirection can be used to save it.
-
-### Encode from standard input
-
-```bash
-printf 'Hello\nworld' | ./build/bitgrid encode -
-```
-
-or:
-
-```bash
-./build/bitgrid encode - < input.txt > encoded.bgrid
-```
-
-### Decode a BitGrid file
-
-```bash
-./build/bitgrid decode encoded.bgrid
-```
-
-### Decode from standard input
-
-```bash
-./build/bitgrid decode - < encoded.bgrid
-```
-
-Because encoded output is written to `stdout` and diagnostic messages are written to `stderr`, BitGrid can be used cleanly in pipelines and shell scripts.
+Successful output goes to stdout and diagnostics go to stderr. Exit status is `0` on success and `1` on usage, input, validation, or output failure. Decoding writes the payload exactly as stored, with no added newline. An I/O failure during a write can leave partial output.
 
 ## Example
 
-Encoding:
-
-```bash
-./build/bitgrid encode "Hi"
+```sh
+bitgrid encode "Hi" > hi.bgrid
+bitgrid decode hi.bgrid
 ```
 
-produces:
+The encoder writes the following grid to `hi.bgrid`. The decoder emits the two bytes `Hi`.
 
 ```text
 +------------------+
@@ -147,145 +66,28 @@ produces:
 +------------------+
 ```
 
-The result can be saved and decoded again:
+## Format and validation
 
-```bash
-./build/bitgrid encode "Hi" > hi.bgrid
-./build/bitgrid decode hi.bgrid
+Each logical bit occupies two printable characters. `..` represents zero and `##` represents one. A 64-bit header stores the ASCII signature `HABG`, the payload length, and the checksum. The header and payload fill the smallest square that can hold them, with `##` in all unused cells.
+
+The decoder checks the size, row layout, borders, cells, complete header, signature, payload capacity, canonical dimensions, padding, and checksum. It accepts uniform LF or CRLF, with or without the final row terminator. A grid occupies up to 1,057,058 bytes including its borders and line endings. Even a single changed payload byte can go undetected at some positions. See [the format specification](FORMAT.md) for the wire layout and checksum analysis.
+
+## Development
+
+`BitGridCodec.h` exposes stateless encode and decode functions in an internal static library. They accept borrowed `std::string_view` input and return an owned string or a typed `CodecError` in a `std::variant`. `main.cpp` handles command syntax, bounded I/O, and diagnostics.
+
+```sh
+cmake -E chdir build ctest -C Release --output-on-failure
+
+cmake -S . -B build-sanitize -DCMAKE_BUILD_TYPE=Debug -DBITGRID_ENABLE_SANITIZERS=ON
+cmake --build build-sanitize --config Debug
+cmake -E chdir build-sanitize ctest -C Debug --output-on-failure
 ```
 
-Output:
+The sanitizer option enables AddressSanitizer and UndefinedBehaviorSanitizer with GCC or Clang where their runtimes are available. Configure with `-DBUILD_TESTING=OFF` to build only the utility and its codec library. The codec tests include independent known-answer grids and deterministic round trips and mutations. CLI tests use CMake to run the executable with files, redirected streams, and a real pipe.
 
-```text
-Hi
-```
-
-## BitGrid Format
-
-BitGrid converts each input byte into eight binary bits. A 64-bit header is prepended to the payload before the complete bit sequence is rendered into the grid.
-
-### Header
-
-| Field | Size | Purpose |
-| --- | ---: | --- |
-| `HABG` signature | 32 bits | Identifies the BitGrid format |
-| Payload length | 16 bits | Number of encoded input bytes |
-| Checksum | 16 bits | Basic payload integrity check |
-
-The maximum payload size is therefore **65,535 bytes**.
-
-### Bit representation
-
-Each logical bit cell occupies two printable characters:
-
-| Block | Value |
-| --- | ---: |
-| `##` | `1` |
-| `..` | `0` |
-
-The grid border uses:
-
-| Character | Purpose |
-| --- | --- |
-| `+` | Corner |
-| `-` | Horizontal border |
-| `\|` | Vertical border |
-
-The header and payload bits are written row-by-row into the smallest square interior that can contain them:
-
-```text
-interior dimension = ceil(sqrt(header bits + payload bits))
-```
-
-A one-cell border is then added around the interior.
-
-If the final row contains unused cells, those cells are padded with `1` blocks (`##`). The payload-length field tells the decoder exactly how many payload bytes belong to the encoded data.
-
-## Checksum
-
-BitGrid uses a simple position-weighted 16-bit checksum.
-
-For each payload byte, the unsigned byte value is multiplied by its one-based position:
-
-```text
-checksum = Σ(byte[i] * (i + 1)) mod 65536
-```
-
-During decoding, BitGrid recalculates the checksum from the recovered payload and compares it with the value stored in the header.
-
-The checksum is intended only to detect accidental corruption. It is **not cryptographically secure** and must not be used for authentication or tamper resistance.
-
-## Validation
-
-Decoding is performed in stages.
-
-BitGrid first validates the physical grid structure:
-
-- the input contains enough rows to form a grid;
-- every row has the expected width;
-- the logical row and column counts form a square;
-- the top and bottom borders are correctly formed;
-- each interior row has valid left and right borders;
-- every interior data cell is either `..` or `##`.
-
-It then validates the encoded data:
-
-- the complete 64-bit header is present;
-- the signature matches `HABG`;
-- the payload length declared by the header is available;
-- the decoded payload matches the stored checksum.
-
-Malformed input is reported on `stderr`, and the program exits with a nonzero status.
-
-## Design
-
-The program is split into two main responsibilities:
-
-```text
-CLI / main.cpp
-    |
-    |  arguments, files, stdin/stdout, error reporting
-    v
-BitGridCodec
-    |
-    |  encoding, parsing, validation, checksum
-    v
-encoded or decoded data
-```
-
-The codec is exposed through a small stateless namespace API consisting of `BitGridCodec::encode()` and `BitGridCodec::decode()`. Each operation receives its input directly and returns either encoded or decoded data or a `CodecError` through `std::variant`.
-
-Implementation details such as binary conversion, checksum calculation, header construction, grid construction, and parsing are kept internal to `BitGridCodec.cpp`.
-
-## Project Structure
-
-```text
-.
-├── .github/
-│   └── workflows/
-│       └── build-and-test.yml
-├── tests/
-│   └── BitGridCodecTests.cpp
-├── .clang-format
-├── .gitignore
-├── BitGridCodec.cpp
-├── BitGridCodec.h
-├── CMakeLists.txt
-├── main.cpp
-└── README.md
-```
-
-## Limitations
-
-- Payload size is limited to **65,535 bytes** by the 16-bit length field.
-- The checksum provides basic error detection only.
-- Input is byte-oriented rather than Unicode-code-point-aware.
-- The decoder validates that the grid is square and structurally well-formed, but does not currently require the smallest possible grid dimensions for the declared payload.
-- Padding cells are generated as `1` blocks, but padding contents are not currently validated during decoding.
-- BitGrid is a custom format and is not compatible with QR codes or other standardized barcode formats.
+Apply the repository's `.clang-format` style to C++ changes.
 
 ## Author
 
-**Haroon Awan**
-
-[GitHub](https://github.com/P3rsin)
+Haroon Awan · [GitHub](https://github.com/P3rsin)

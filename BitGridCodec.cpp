@@ -1,253 +1,192 @@
 #include "BitGridCodec.h"
-#include <cmath>
-#include <sstream>
-#include <vector>
 
-using namespace std;
+#include <algorithm>
+#include <climits>
+#include <cstdint>
+#include <cstring>
+#include <limits>
 
 namespace BitGridCodec
 {
 namespace
 {
-// Format constants
-const string FORMAT_SIGNATURE = "HABG";
+static_assert(CHAR_BIT == 8 && std::numeric_limits<std::size_t>::digits >= 32,
+              "BitGrid requires 8-bit bytes and at least 32-bit size_t");
+static_assert('+' == 0x2b && '-' == 0x2d && '|' == 0x7c && '.' == 0x2e && '#' == 0x23 && '\n' == 0x0a && '\r' == 0x0d,
+              "BitGrid requires ASCII grid characters");
 
-constexpr char BORDER_CORNER = '+';
-constexpr char BORDER_HORIZONTAL = '-';
-constexpr char BORDER_VERTICAL = '|';
-constexpr char ZERO_BIT_CHAR = '.';
-constexpr char ONE_BIT_CHAR = '#';
+constexpr std::uint32_t signature = 0x48414247; // HABG in ASCII.
+constexpr unsigned signatureBits = 32;
+constexpr unsigned lengthBits = 16;
+constexpr unsigned checksumBits = 16;
+constexpr unsigned byteBits = 8;
+constexpr std::size_t headerBits = signatureBits + lengthBits + checksumBits;
 
-constexpr size_t BIT_BLOCK_LENGTH = 2;
-const string ZERO_BIT_BLOCK(BIT_BLOCK_LENGTH, ZERO_BIT_CHAR);
-const string ONE_BIT_BLOCK(BIT_BLOCK_LENGTH, ONE_BIT_CHAR);
-
-constexpr size_t BITS_PER_BYTE = 8;
-constexpr size_t PAYLOAD_LENGTH_BITS = 16;
-constexpr size_t CHECKSUM_BITS = 16;
-constexpr size_t SIGNATURE_BITS = 32;
-
-constexpr size_t MAX_PAYLOAD_SIZE = (size_t{1} << PAYLOAD_LENGTH_BITS) - 1;
-constexpr size_t CHECKSUM_MODULUS = (size_t{1} << CHECKSUM_BITS);
-constexpr size_t HEADER_BITS = SIGNATURE_BITS + PAYLOAD_LENGTH_BITS + CHECKSUM_BITS;
-
-// Binary conversion
-string integerToBinaryBits(size_t value, size_t bitWidth)
+constexpr std::size_t requiredBits(std::size_t payloadSize)
 {
-    string binaryBits(bitWidth, '0');
+    return headerBits + byteBits * payloadSize;
+}
 
-    for (size_t bitIndex = bitWidth; bitIndex-- > 0;)
+// All callers have at most maxPayloadSize bytes.
+constexpr std::size_t dimensionFor(std::size_t payloadSize)
+{
+    const auto bits = requiredBits(payloadSize);
+    std::size_t side = 1;
+    while (side * side < bits)
     {
-        binaryBits[bitIndex] = static_cast<char>('0' + (value % 2));
-        value /= 2;
+        ++side;
     }
-
-    return binaryBits;
+    return side;
 }
 
-string characterToBinaryBits(char character)
+constexpr std::size_t rowWidth(std::size_t side)
 {
-    return integerToBinaryBits(static_cast<unsigned char>(character), BITS_PER_BYTE);
+    return 2 * side + 2;
 }
 
-string textToBinaryBits(const string &text)
+constexpr std::size_t gridSize(std::size_t side, std::size_t newlineSize)
 {
-    string binaryBits;
-    binaryBits.reserve(text.size() * BITS_PER_BYTE);
+    return (side + 2) * (rowWidth(side) + newlineSize);
+}
 
-    for (const char character : text)
+constexpr auto maxDimension = dimensionFor(maxPayloadSize);
+static_assert(maxPayloadSize == std::numeric_limits<std::uint16_t>::max());
+
+std::size_t cellOffset(std::size_t bit, std::size_t side, std::size_t stride)
+{
+    return (bit / side + 1) * stride + 1 + 2 * (bit % side);
+}
+
+unsigned char byteValue(char byte)
+{
+    unsigned char value;
+    std::memcpy(&value, &byte, 1);
+    return value;
+}
+
+std::uint16_t calculateChecksum(std::string_view payload)
+{
+    std::uint32_t position = 0;
+    std::uint16_t checksum = 0;
+    for (char byte : payload)
     {
-        binaryBits += characterToBinaryBits(character);
+        // Conversion to uint16_t implements reduction modulo 65536.
+        checksum = static_cast<std::uint16_t>(checksum + ++position * byteValue(byte));
     }
-
-    return binaryBits;
-}
-
-size_t binaryBitsToInteger(const string &binaryBits)
-{
-    size_t integerValue = 0;
-
-    for (const char bit : binaryBits)
-    {
-        integerValue *= 2;
-
-        if (bit == '1')
-        {
-            integerValue++;
-        }
-    }
-
-    return integerValue;
-}
-
-char binaryBitsToCharacter(const string &binaryBits)
-{
-    return static_cast<char>(binaryBitsToInteger(binaryBits));
-}
-
-string binaryBitsToText(const string &binaryBits)
-{
-    string decodedText;
-    decodedText.reserve(binaryBits.size() / BITS_PER_BYTE);
-
-    for (size_t bitIndex = 0; bitIndex < binaryBits.size(); bitIndex += BITS_PER_BYTE)
-    {
-        decodedText += binaryBitsToCharacter(binaryBits.substr(bitIndex, BITS_PER_BYTE));
-    }
-
-    return decodedText;
-}
-
-// Encoding / decoding helpers
-size_t calculateChecksum(const string &text)
-{
-    size_t checksum = 0;
-
-    for (size_t characterIndex = 0; characterIndex < text.size(); characterIndex++)
-    {
-        const size_t byteValue = static_cast<unsigned char>(text[characterIndex]);
-        checksum = (checksum + (byteValue * (characterIndex + 1))) % CHECKSUM_MODULUS;
-    }
-
     return checksum;
 }
+} // namespace
 
-string buildHeaderBits(const string &inputText)
+std::size_t maxGridSize() noexcept
 {
-    const string payloadLengthBits = integerToBinaryBits(inputText.size(), PAYLOAD_LENGTH_BITS);
-    const string checksumBits = integerToBinaryBits(calculateChecksum(inputText), CHECKSUM_BITS);
-    return textToBinaryBits(FORMAT_SIGNATURE) + payloadLengthBits + checksumBits;
+    return gridSize(maxDimension, 2);
 }
 
-string buildBitGrid(const string &inputText)
+CodecResult encode(std::string_view payload)
 {
-    const string encodedBits = buildHeaderBits(inputText) + textToBinaryBits(inputText);
-    const size_t totalBitCount = encodedBits.size();
-    const size_t gridDimension = static_cast<size_t>(ceil(sqrt(totalBitCount))) + 2;
-
-    string bitGrid;
-    size_t bitIndex = 0;
-
-    for (size_t rowIndex = 0; rowIndex < gridDimension; rowIndex++)
+    if (payload.size() > maxPayloadSize)
     {
-        for (size_t columnIndex = 0; columnIndex < gridDimension; columnIndex++)
+        return CodecError::InputTooLarge;
+    }
+
+    const auto side = dimensionFor(payload.size());
+    const auto width = rowWidth(side);
+    const auto stride = width + 1;
+    std::string grid(gridSize(side, 1), '#');
+    for (std::size_t row = 0; row < side + 2; ++row)
+    {
+        const auto start = row * stride;
+        if (row == 0 || row == side + 1)
         {
-            const bool isBorderRow = rowIndex == 0 || rowIndex == gridDimension - 1;
-            const bool isBorderColumn = columnIndex == 0 || columnIndex == gridDimension - 1;
-
-            if (isBorderRow && isBorderColumn)
-            {
-                bitGrid += BORDER_CORNER;
-            }
-            else if (isBorderRow)
-            {
-                bitGrid += string(BIT_BLOCK_LENGTH, BORDER_HORIZONTAL);
-            }
-            else if (isBorderColumn)
-            {
-                bitGrid += BORDER_VERTICAL;
-            }
-            else
-            {
-                if (bitIndex < totalBitCount)
-                {
-                    if (encodedBits[bitIndex] == '1')
-                    {
-                        bitGrid += ONE_BIT_BLOCK;
-                    }
-                    else
-                    {
-                        bitGrid += ZERO_BIT_BLOCK;
-                    }
-                }
-                else
-                {
-                    bitGrid += ONE_BIT_BLOCK;
-                }
-
-                bitIndex++;
-            }
+            grid[start] = grid[start + width - 1] = '+';
+            std::fill_n(grid.data() + start + 1, width - 2, '-');
         }
-
-        bitGrid += "\n";
+        else
+        {
+            grid[start] = grid[start + width - 1] = '|';
+        }
+        grid[start + width] = '\n';
     }
 
-    return bitGrid;
+    std::size_t bit = 0;
+    const auto writeBits = [&](std::uint32_t value, unsigned count) {
+        while (count > 0)
+        {
+            if (((value >> --count) & 1u) == 0)
+            {
+                const auto offset = cellOffset(bit, side, stride);
+                grid[offset] = grid[offset + 1] = '.';
+            }
+            ++bit;
+        }
+    };
+
+    writeBits(signature, signatureBits);
+    writeBits(static_cast<std::uint16_t>(payload.size()), lengthBits);
+    writeBits(calculateChecksum(payload), checksumBits);
+    for (char byte : payload)
+    {
+        writeBits(byteValue(byte), byteBits);
+    }
+    return grid;
 }
 
-CodecResult extractBinaryBits(const string &bitGrid)
+CodecResult decode(std::string_view grid)
 {
-    vector<string> rows;
-    istringstream stream(bitGrid);
-    string readRow;
-
-    while (getline(stream, readRow, '\n'))
+    if (grid.size() > maxGridSize())
     {
-        rows.push_back(readRow);
+        return CodecError::InputTooLarge;
     }
 
-    if (rows.size() < 2)
+    const auto firstLf = grid.find('\n');
+    if (firstLf == std::string_view::npos || firstLf + 1 == grid.size())
     {
         return CodecError::MissingData;
     }
 
-    const size_t rowLength = rows[0].size();
-
-    if (rowLength < 2)
-    {
-        return CodecError::MissingData;
-    }
-
-    if ((rowLength - 2) % BIT_BLOCK_LENGTH != 0)
+    const std::string_view newline = firstLf > 0 && grid[firstLf - 1] == '\r' ? "\r\n" : "\n";
+    const auto width = firstLf + 1 - newline.size();
+    if (width < 2 || width > rowWidth(maxDimension) || width % 2 != 0)
     {
         return CodecError::InvalidDimensions;
     }
 
-    const size_t logicalGridDimension = ((rowLength - 2) / BIT_BLOCK_LENGTH) + 2;
-
-    if (rows.size() != logicalGridDimension)
+    const auto side = (width - 2) / 2;
+    const auto stride = width + newline.size();
+    const auto fullSize = gridSize(side, newline.size());
+    const bool terminated = grid.size() == fullSize;
+    if (!terminated && grid.size() != fullSize - newline.size())
     {
         return CodecError::InvalidDimensions;
     }
 
-    string extractedBits;
-
-    for (size_t rowIndex = 0; rowIndex < rows.size(); rowIndex++)
+    // Validate rows and cells before reading any header or allocating the payload.
+    for (std::size_t row = 0; row < side + 2; ++row)
     {
-        if (rows[rowIndex].size() != rowLength)
+        const auto start = row * stride;
+        const auto line = grid.substr(start, width);
+        const bool borderRow = row == 0 || row == side + 1;
+        if ((row != side + 1 || terminated) && grid.substr(start + width, newline.size()) != newline)
         {
             return CodecError::InvalidDimensions;
         }
-
-        if (rowIndex == 0 || rowIndex == rows.size() - 1)
+        if (borderRow)
         {
-            const string expectedBorderRow = BORDER_CORNER + string(rowLength - 2, BORDER_HORIZONTAL) + BORDER_CORNER;
-
-            if (rows[rowIndex] != expectedBorderRow)
+            if (line.front() != '+' || line.back() != '+' ||
+                line.substr(1, width - 2).find_first_not_of('-') != std::string_view::npos)
             {
                 return CodecError::MalformedBorder;
             }
         }
         else
         {
-            if (rows[rowIndex][0] != BORDER_VERTICAL || rows[rowIndex][rowLength - 1] != BORDER_VERTICAL)
+            if (line.front() != '|' || line.back() != '|')
             {
                 return CodecError::MalformedBorder;
             }
-
-            for (size_t colIndex = 1; colIndex < rowLength - 1; colIndex += BIT_BLOCK_LENGTH)
+            for (std::size_t col = 1; col < width - 1; col += 2)
             {
-                const string currentBitBlock = rows[rowIndex].substr(colIndex, BIT_BLOCK_LENGTH);
-
-                if (currentBitBlock == ZERO_BIT_BLOCK)
-                {
-                    extractedBits += '0';
-                }
-                else if (currentBitBlock == ONE_BIT_BLOCK)
-                {
-                    extractedBits += '1';
-                }
-                else
+                if ((line[col] != '.' && line[col] != '#') || line[col] != line[col + 1])
                 {
                     return CodecError::InvalidBlock;
                 }
@@ -255,62 +194,57 @@ CodecResult extractBinaryBits(const string &bitGrid)
         }
     }
 
-    return extractedBits;
-}
-} // namespace
-
-CodecResult encode(const string &inputText)
-{
-    if (inputText.size() > MAX_PAYLOAD_SIZE)
-    {
-        return CodecError::InputTooLarge;
-    }
-
-    return buildBitGrid(inputText);
-}
-
-CodecResult decode(const string &bitGrid)
-{
-    const CodecResult extractionResult = extractBinaryBits(bitGrid);
-
-    if (holds_alternative<CodecError>(extractionResult))
-    {
-        return get<CodecError>(extractionResult);
-    }
-
-    const string extractedBits = get<string>(extractionResult);
-
-    if (extractedBits.size() < HEADER_BITS)
+    const auto capacity = side * side;
+    if (capacity < headerBits)
     {
         return CodecError::IncompleteHeader;
     }
 
-    const string headerBits = extractedBits.substr(0, HEADER_BITS);
+    std::size_t bit = 0;
+    const auto readBits = [&](unsigned count) {
+        std::uint32_t value = 0;
+        for (unsigned i = 0; i < count; ++i, ++bit)
+        {
+            value = (value << 1) | static_cast<std::uint32_t>(grid[cellOffset(bit, side, stride)] == '#');
+        }
+        return value;
+    };
 
-    if (binaryBitsToText(headerBits.substr(0, SIGNATURE_BITS)) != FORMAT_SIGNATURE)
+    if (readBits(signatureBits) != signature)
     {
         return CodecError::InvalidSignature;
     }
-
-    const size_t payloadLength = binaryBitsToInteger(headerBits.substr(SIGNATURE_BITS, PAYLOAD_LENGTH_BITS));
-    const size_t payloadBitCount = payloadLength * BITS_PER_BYTE;
-
-    if (extractedBits.size() < HEADER_BITS + payloadBitCount)
+    const auto payloadSize = static_cast<std::size_t>(readBits(lengthBits));
+    const auto checksum = readBits(checksumBits);
+    const auto dataEnd = requiredBits(payloadSize);
+    if (dataEnd > capacity)
     {
         return CodecError::MissingData;
     }
+    // With sufficient capacity, only the next smaller square needs checking.
+    if ((side - 1) * (side - 1) >= dataEnd)
+    {
+        return CodecError::NoncanonicalDimensions;
+    }
+    for (auto padding = dataEnd; padding < capacity; ++padding)
+    {
+        if (grid[cellOffset(padding, side, stride)] != '#')
+        {
+            return CodecError::InvalidPadding;
+        }
+    }
 
-    const string payloadBits = extractedBits.substr(HEADER_BITS, payloadBitCount);
-    const string decodedText = binaryBitsToText(payloadBits);
-    const size_t storedChecksum =
-        binaryBitsToInteger(headerBits.substr(SIGNATURE_BITS + PAYLOAD_LENGTH_BITS, CHECKSUM_BITS));
-    const size_t calculatedChecksum = calculateChecksum(decodedText);
-
-    if (storedChecksum != calculatedChecksum)
+    std::string payload(payloadSize, '\0');
+    // Write raw byte representations even on platforms with signed char.
+    for (auto &byte : payload)
+    {
+        const auto value = static_cast<unsigned char>(readBits(byteBits));
+        std::memcpy(&byte, &value, 1);
+    }
+    if (calculateChecksum(payload) != checksum)
     {
         return CodecError::ChecksumMismatch;
     }
-
-    return decodedText;
+    return payload;
 }
 } // namespace BitGridCodec
