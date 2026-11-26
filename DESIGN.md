@@ -38,4 +38,4 @@ The reference encoder uses product-then-reduce field arithmetic, Gauss–Jordan 
 
 A CRC alone would improve detection while leaving erased bytes unavailable. One XOR parity row would handle a single erasure per column. Support for correcting unknown error locations would require a different decoding algorithm and independent tests for its correction bound. The release focuses on marked damage in aligned ASCII. Camera scanning, archival interchange, and production communications are outside that experimental scope.
 
-The recovery milestone was developed with AI assistance. The source, reference encoder, and test vectors are available for independent review.
+The source, reference encoder, and test vectors are available for independent review.
