@@ -16,7 +16,9 @@ enum class CodecError
     InvalidDimensions,
     InvalidBlock,
     NoncanonicalDimensions,
-    InvalidPadding
+    InvalidPadding,
+    TooManyErasures,
+    InconsistentSymbols
 };
 
 using CodecResult = std::variant<std::string, CodecError>;
@@ -30,4 +32,9 @@ inline constexpr std::size_t maxPayloadSize = 65'535;
 
 [[nodiscard]] CodecResult encode(std::string_view payload);
 [[nodiscard]] CodecResult decode(std::string_view grid);
+
+// BGR1 uses a separate wire format. Each ?? cell marks its byte as erased.
+[[nodiscard]] std::size_t maxProtectedGridSize() noexcept;
+[[nodiscard]] CodecResult protect(std::string_view payload);
+[[nodiscard]] CodecResult recover(std::string_view grid);
 } // namespace BitGridCodec

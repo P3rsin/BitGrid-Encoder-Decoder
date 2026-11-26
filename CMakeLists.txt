@@ -11,7 +11,7 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-add_library(bitgrid_codec STATIC BitGridCodec.cpp BitGridCodec.h)
+add_library(bitgrid_codec STATIC BitGridCodec.cpp BitGridCodec.h BitGridLayout.h BitGridRecovery.cpp)
 target_include_directories(bitgrid_codec PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")
 target_compile_features(bitgrid_codec PUBLIC cxx_std_17)
 
@@ -26,8 +26,10 @@ set(bitgrid_executables bitgrid)
 if(BUILD_TESTING)
     add_executable(bitgrid_tests tests/BitGridCodecTests.cpp)
     target_link_libraries(bitgrid_tests PRIVATE bitgrid_codec)
-    list(APPEND bitgrid_targets bitgrid_tests)
-    list(APPEND bitgrid_executables bitgrid_tests)
+    add_executable(bitgrid_recovery_tests tests/BitGridRecoveryTests.cpp)
+    target_link_libraries(bitgrid_recovery_tests PRIVATE bitgrid_codec)
+    list(APPEND bitgrid_targets bitgrid_tests bitgrid_recovery_tests)
+    list(APPEND bitgrid_executables bitgrid_tests bitgrid_recovery_tests)
 
     set(has_dev_full OFF)
     if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND EXISTS "/dev/full")
@@ -35,6 +37,7 @@ if(BUILD_TESTING)
     endif()
 
     add_test(NAME BitGridCodecTests COMMAND bitgrid_tests)
+    add_test(NAME BitGridRecoveryTests COMMAND bitgrid_recovery_tests)
     add_test(NAME BitGridCliTests
         COMMAND "${CMAKE_COMMAND}"
             "-DBITGRID=$<TARGET_FILE:bitgrid>"
@@ -43,7 +46,7 @@ if(BUILD_TESTING)
             "-DHAS_DEV_FULL=${has_dev_full}"
             -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/BitGridCliTests.cmake"
     )
-    set_tests_properties(BitGridCodecTests BitGridCliTests PROPERTIES TIMEOUT 60)
+    set_tests_properties(BitGridCodecTests BitGridRecoveryTests BitGridCliTests PROPERTIES TIMEOUT 60)
 endif()
 
 foreach(target IN LISTS bitgrid_targets)

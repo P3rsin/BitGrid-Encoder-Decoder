@@ -44,3 +44,7 @@ jobs:
 
       - name: Run tests
         run: ctest --test-dir build -C ${{ matrix.config }} --output-on-failure
+
+      - name: Run independent recovery experiment
+        if: runner.os == 'Linux'
+        run: python3 tools/recovery_experiment.py build/bitgrid
