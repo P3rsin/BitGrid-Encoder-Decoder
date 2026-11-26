@@ -16,11 +16,25 @@
 
 namespace
 {
-enum class Command
+enum class InputKind
 {
-    Encode,
-    Decode
+    Payload,
+    Grid
 };
+
+struct Command
+{
+    std::string_view name;
+    CodecResult (*codec)(std::string_view);
+    std::size_t limit;
+    InputKind input;
+};
+
+#ifdef BITGRID_VERSION
+constexpr std::string_view version = "bitgrid " BITGRID_VERSION "\n";
+#else
+constexpr std::string_view version = "bitgrid development\n";
+#endif
 
 constexpr std::string_view help = R"(BitGrid Encoder/Decoder
 
@@ -32,6 +46,13 @@ Usage:
   bitgrid decode <file>        Decode a BitGrid file
   bitgrid decode -- <file>     Decode a file named like an option
   bitgrid decode -             Decode a BitGrid from standard input
+  bitgrid protect <text>       Encode literal bytes with recovery parity
+  bitgrid protect -- <text>    Protect a reserved argument literally
+  bitgrid protect -f <file>    Protect bytes from a file
+  bitgrid protect -            Protect bytes from standard input
+  bitgrid recover <file>       Recover a protected grid with ?? erasures
+  bitgrid recover -- <file>    Recover a file named like an option
+  bitgrid recover -            Recover a protected grid from standard input
   bitgrid help | --help        Display help
   bitgrid --version            Display the program version
 )";
@@ -77,20 +98,15 @@ int writeOutput(std::string_view bytes)
     return 0;
 }
 
-std::size_t inputLimit(Command command)
+int inputTooLarge(const Command &command)
 {
-    return command == Command::Encode ? BitGridCodec::maxPayloadSize : BitGridCodec::maxGridSize();
+    const auto kind = command.input == InputKind::Payload ? "payload" : "grid";
+    return error(std::string(kind) + " exceeds the maximum of " + std::to_string(command.limit) + " bytes");
 }
 
-int inputTooLarge(Command command)
+int runCodec(const Command &command, std::string_view input)
 {
-    const auto kind = command == Command::Encode ? "payload" : "grid";
-    return error(std::string(kind) + " exceeds the maximum of " + std::to_string(inputLimit(command)) + " bytes");
-}
-
-int runCodec(Command command, std::string_view input)
-{
-    const auto result = command == Command::Encode ? BitGridCodec::encode(input) : BitGridCodec::decode(input);
+    const auto result = command.codec(input);
     if (const auto *bytes = std::get_if<std::string>(&result))
     {
         return writeOutput(*bytes);
@@ -117,14 +133,18 @@ int runCodec(Command command, std::string_view input)
     case CodecError::NoncanonicalDimensions:
         return error("grid is larger than required by the declared payload length");
     case CodecError::InvalidPadding:
-        return error("grid padding must use '##' blocks");
+        return error("invalid grid padding");
+    case CodecError::TooManyErasures:
+        return error("more than four erased bytes in one band column");
+    case CodecError::InconsistentSymbols:
+        return error("retained bytes disagree with recovery parity");
     }
     return error("unknown codec error");
 }
 
-int readInput(Command command, std::FILE *stream, const std::string &source)
+int readInput(const Command &command, std::FILE *stream, const std::string &source)
 {
-    const auto limit = inputLimit(command);
+    const auto limit = command.limit;
     std::array<char, 8192> buffer;
     std::string input;
     for (;;)
@@ -148,7 +168,7 @@ int readInput(Command command, std::FILE *stream, const std::string &source)
     }
 }
 
-int readStdin(Command command)
+int readStdin(const Command &command)
 {
     if (!setBinaryMode(stdin))
     {
@@ -157,7 +177,7 @@ int readStdin(Command command)
     return readInput(command, stdin, "standard input");
 }
 
-int readFile(Command command, const char *path)
+int readFile(const Command &command, const char *path)
 {
     std::FILE *file = nullptr;
 #ifdef _MSC_VER
@@ -178,11 +198,11 @@ int readFile(Command command, const char *path)
     return readInput(command, input.get(), source);
 }
 
-int encodeCommand(int argc, char *const argv[])
+int payloadCommand(const Command &command, int argc, char *const argv[])
 {
     if (argc < 3)
     {
-        return usageError("no input provided for encoding");
+        return usageError("no input provided for " + std::string(command.name));
     }
     const std::string_view source = argv[2];
     if (source == "-f" && argc == 3)
@@ -191,43 +211,43 @@ int encodeCommand(int argc, char *const argv[])
     }
     if (argc == 4 && source == "-f")
     {
-        return readFile(Command::Encode, argv[3]);
+        return readFile(command, argv[3]);
     }
     if (argc == 4 && source == "--")
     {
-        return runCodec(Command::Encode, argv[3]);
+        return runCodec(command, argv[3]);
     }
     if (argc != 3)
     {
-        return usageError("invalid arguments for encode");
+        return usageError("invalid arguments for " + std::string(command.name));
     }
     if (source == "-")
     {
-        return readStdin(Command::Encode);
+        return readStdin(command);
     }
-    return runCodec(Command::Encode, source);
+    return runCodec(command, source);
 }
 
-int decodeCommand(int argc, char *const argv[])
+int gridCommand(const Command &command, int argc, char *const argv[])
 {
     if (argc < 3)
     {
-        return usageError("no input provided for decoding");
+        return usageError("no input provided for " + std::string(command.name));
     }
     const std::string_view source = argv[2];
     if (argc == 4 && source == "--")
     {
-        return readFile(Command::Decode, argv[3]);
+        return readFile(command, argv[3]);
     }
     if (argc != 3)
     {
-        return usageError("invalid arguments for decode");
+        return usageError("invalid arguments for " + std::string(command.name));
     }
     if (source == "-")
     {
-        return readStdin(Command::Decode);
+        return readStdin(command);
     }
-    return readFile(Command::Decode, argv[2]);
+    return readFile(command, argv[2]);
 }
 } // namespace
 
@@ -238,13 +258,20 @@ int main(int argc, char *argv[])
         return usageError("no command provided");
     }
     const std::string_view command = argv[1];
-    if (command == "encode")
+    using BitGridCodec::maxPayloadSize;
+    const Command commands[]{
+        {"encode", BitGridCodec::encode, maxPayloadSize, InputKind::Payload},
+        {"decode", BitGridCodec::decode, BitGridCodec::maxGridSize(), InputKind::Grid},
+        {"protect", BitGridCodec::protect, maxPayloadSize, InputKind::Payload},
+        {"recover", BitGridCodec::recover, BitGridCodec::maxProtectedGridSize(), InputKind::Grid},
+    };
+    for (const auto &operation : commands)
     {
-        return encodeCommand(argc, argv);
-    }
-    if (command == "decode")
-    {
-        return decodeCommand(argc, argv);
+        if (operation.name == command)
+        {
+            return operation.input == InputKind::Payload ? payloadCommand(operation, argc, argv)
+                                                         : gridCommand(operation, argc, argv);
+        }
     }
     if (command == "help" || command == "--help" || command == "--version")
     {
@@ -252,7 +279,7 @@ int main(int argc, char *argv[])
         {
             return usageError("extra arguments after " + std::string(command));
         }
-        return writeOutput(command == "--version" ? "bitgrid " BITGRID_VERSION "\n" : help);
+        return writeOutput(command == "--version" ? version : help);
     }
     return usageError("unknown command '" + std::string(command) + "'");
 }

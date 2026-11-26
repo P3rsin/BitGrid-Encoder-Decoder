@@ -1,6 +1,6 @@
 #include "BitGridCodec.h"
+#include "BitGridLayout.h"
 
-#include <algorithm>
 #include <climits>
 #include <cstdint>
 #include <cstring>
@@ -39,16 +39,6 @@ constexpr std::size_t dimensionFor(std::size_t payloadSize)
     return side;
 }
 
-constexpr std::size_t rowWidth(std::size_t side)
-{
-    return 2 * side + 2;
-}
-
-constexpr std::size_t gridSize(std::size_t side, std::size_t newlineSize)
-{
-    return (side + 2) * (rowWidth(side) + newlineSize);
-}
-
 constexpr auto maxDimension = dimensionFor(maxPayloadSize);
 static_assert(maxPayloadSize == std::numeric_limits<std::uint16_t>::max());
 
@@ -79,7 +69,7 @@ std::uint16_t calculateChecksum(std::string_view payload)
 
 std::size_t maxGridSize() noexcept
 {
-    return gridSize(maxDimension, 2);
+    return detail::gridSize(maxDimension, maxDimension, 2);
 }
 
 CodecResult encode(std::string_view payload)
@@ -90,23 +80,8 @@ CodecResult encode(std::string_view payload)
     }
 
     const auto side = dimensionFor(payload.size());
-    const auto width = rowWidth(side);
-    const auto stride = width + 1;
-    std::string grid(gridSize(side, 1), '#');
-    for (std::size_t row = 0; row < side + 2; ++row)
-    {
-        const auto start = row * stride;
-        if (row == 0 || row == side + 1)
-        {
-            grid[start] = grid[start + width - 1] = '+';
-            std::fill_n(grid.data() + start + 1, width - 2, '-');
-        }
-        else
-        {
-            grid[start] = grid[start + width - 1] = '|';
-        }
-        grid[start + width] = '\n';
-    }
+    const auto stride = detail::rowWidth(side) + 1;
+    auto grid = detail::makeGrid(side, side);
 
     std::size_t bit = 0;
     const auto writeBits = [&](std::uint32_t value, unsigned count) {
@@ -146,14 +121,14 @@ CodecResult decode(std::string_view grid)
 
     const std::string_view newline = firstLf > 0 && grid[firstLf - 1] == '\r' ? "\r\n" : "\n";
     const auto width = firstLf + 1 - newline.size();
-    if (width < 2 || width > rowWidth(maxDimension) || width % 2 != 0)
+    if (width < 2 || width > detail::rowWidth(maxDimension) || width % 2 != 0)
     {
         return CodecError::InvalidDimensions;
     }
 
     const auto side = (width - 2) / 2;
     const auto stride = width + newline.size();
-    const auto fullSize = gridSize(side, newline.size());
+    const auto fullSize = detail::gridSize(side, side, newline.size());
     const bool terminated = grid.size() == fullSize;
     if (!terminated && grid.size() != fullSize - newline.size())
     {
@@ -172,15 +147,14 @@ CodecResult decode(std::string_view grid)
         }
         if (borderRow)
         {
-            if (line.front() != '+' || line.back() != '+' ||
-                line.substr(1, width - 2).find_first_not_of('-') != std::string_view::npos)
+            if (!detail::horizontalBorder(line))
             {
                 return CodecError::MalformedBorder;
             }
         }
         else
         {
-            if (line.front() != '|' || line.back() != '|')
+            if (!detail::verticalBorder(line))
             {
                 return CodecError::MalformedBorder;
             }
