@@ -22,7 +22,7 @@ cmake -E chdir build ctest -C Release --output-on-failure
 cmake --install build --config Release --prefix ./build/install
 ```
 
-With a single-configuration generator the executable is `build/bitgrid`. With Visual Studio it is `build/Release/bitgrid.exe`. The example install places it under `build/install/bin`. Use the appropriate path below if `bitgrid` is outside your `PATH`.
+With a single-configuration generator the executable is `build/bitgrid`. With Visual Studio it is `build/Release/bitgrid.exe`. The example install places it under `build/install/bin`. Use the appropriate path below if `bitgrid` is outside your `PATH`. For v1.1.0, `bitgrid --version` reports `bitgrid 1.1.0`.
 
 ## Usage
 
@@ -82,3 +82,5 @@ Apply the repository's `.clang-format` style to C++ changes.
 ## Author
 
 Haroon Awan · [GitHub](https://github.com/P3rsin)
+
+BitGrid is distributed under the [MIT License](LICENSE).
