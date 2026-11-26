@@ -149,6 +149,8 @@ set(damaged "${TEST_DIR}/damaged grid.bgr")
 run_bitgrid(0 "^$" "${empty}" "${protected}" protect -f "${binary}")
 run_bitgrid(0 "^$" "${empty}" "${output}" recover "${protected}")
 expect_file_bytes("${output}" "000d0a1a80ff")
+run_bitgrid(1 "invalid grid dimensions" "${empty}" "${output}" decode "${protected}")
+run_bitgrid(1 "invalid grid dimensions" "${empty}" "${output}" recover "${grid}")
 
 # The six-byte payload fits one 12-row band with two byte columns.
 file(STRINGS "${protected}" protected_rows)

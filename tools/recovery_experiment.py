@@ -3,9 +3,11 @@
 
 import argparse
 import functools
+from html import escape
 import operator
 from pathlib import Path
 import subprocess
+from textwrap import wrap
 
 
 def gf_multiply(a, b):
@@ -120,17 +122,95 @@ def require(condition, message):
         raise SystemExit(message)
 
 
+def verify_field():
+    # If x generates all 255 nonzero residues, every one is a unit and
+    # the degree-eight modulus is irreducible.
+    value = 1
+    residues = set()
+    for _ in range(255):
+        residues.add(value)
+        value = gf_multiply(value, 2)
+    require(value == 1 and residues == set(range(1, 256)), "GF(256) generator cycle failed")
+
+
+def parity_basis_payload():
+    # Bands two and three each have 32 columns. Place one of the 64 binary
+    # basis vectors of the 8-symbol input in each column, away from metadata.
+    payload = bytearray(3 * 256 - 6)
+    for index in range(64):
+        band, column = 1 + index // 32, index % 32
+        row, bit = divmod(index, 8)
+        payload[band * 256 + row * 32 + column - 6] = 1 << bit
+    return bytes(payload)
+
+
+def write_demo_svg(executable, path):
+    payload = b"Hi"
+    protected = run(executable, "protect", payload)
+    require(protected.returncode == 0 and not protected.stderr, "demo protection failed")
+    intact = protected.stdout
+    four_rows = erase_rows(intact, 0, 4)
+    five_rows = erase_rows(intact, 0, 5)
+    restored = run(executable, "recover", four_rows)
+    failed = run(executable, "recover", five_rows)
+    require(restored.returncode == 0 and restored.stdout == payload and not restored.stderr,
+            "demo recovery failed")
+    require(failed.returncode == 1 and not failed.stdout and b"more than four" in failed.stderr,
+            "demo exceeded-budget check failed")
+
+    panels = (
+        ("Intact", intact, f"protect exit {protected.returncode}", ()),
+        ("Four rows erased", four_rows, f"recover exit {restored.returncode}",
+         (f'stdout  "{restored.stdout.decode("ascii")}"',)),
+        ("Five rows erased", five_rows, f"recover exit {failed.returncode}",
+         (*wrap(failed.stderr.decode("ascii").strip(), width=34), "stdout  (empty)")),
+    )
+    svg = [
+        '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 780 300" role="img" aria-labelledby="title desc">',
+        '<title id="title">BitGrid BGR1 erasure recovery</title>',
+        '<desc id="desc">The original Hi grid, four masked rows restored to Hi, '
+        'and five masked rows rejected with empty standard output.</desc>',
+        '<rect width="780" height="300" rx="10" fill="#eef2f7"/>',
+    ]
+    for index, (heading, grid, status, output) in enumerate(panels):
+        svg += [
+            f'<g transform="translate({10 + 256 * index} 10)">',
+            '<rect width="248" height="280" rx="7" fill="#ffffff" stroke="#bac6d4"/>',
+            f'<text x="12" y="24" fill="#172334" font-family="sans-serif" '
+            f'font-weight="bold" font-size="14">{escape(heading)}</text>',
+            '<g font-family="monospace" font-size="10.5" xml:space="preserve">',
+        ]
+        for row_number, row in enumerate(grid.decode("ascii").splitlines()):
+            color = "#a12b1d" if "?" in row else "#243246"
+            positions = " ".join(str(12 + 6 * column) for column in range(len(row)))
+            svg.append(
+                f'<text x="{positions}" y="{47 + 12 * row_number}" fill="{color}" '
+                f'font-family="DejaVu Sans Mono">{escape(row)}</text>'
+            )
+        for line_number, line in enumerate((status, *output)):
+            color = "#a12b1d" if index == 2 else "#1b664c"
+            svg.append(f'<text x="12" y="{222 + 13 * line_number}" fill="{color}">{escape(line)}</text>')
+        svg += ["</g>", "</g>"]
+    svg.append("</svg>")
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_bytes(("\n".join(svg) + "\n").encode("utf-8"))
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("bitgrid", type=Path, help="built BitGrid executable")
     parser.add_argument("--output-dir", type=Path, help="write pristine and damaged samples")
+    parser.add_argument("--demo-svg", type=Path, help="render the verified recovery and failure demo")
     args = parser.parse_args()
     executable = args.bitgrid.resolve()
+    verify_field()
+    print("GF(256) generator visits all 255 nonzero residues.")
     require(crc32c(b"123456789") == 0xE3069283, "CRC-32C check vector failed")
 
     # Exactly one full band with 32 codewords and no zero padding.
     payload = bytes(range(246))
-    fixtures = (b"", b"Hi", b"\0\r\n\x1a\x80\xff", payload, bytes(range(247)), bytes(range(256)))
+    fixtures = (b"", b"Hi", b"\0\r\n\x1a\x80\xff", payload, bytes(range(247)), bytes(range(256)),
+                parity_basis_payload())
     for sample in fixtures:
         reference = reference_grid(sample)
         encoded = run(executable, "protect", sample)
@@ -143,7 +223,7 @@ def main():
             recovered.returncode == 0 and not recovered.stderr and recovered.stdout == sample,
             f"reference decoding mismatch at {len(sample)} payload bytes",
         )
-    print(f"Independent encoder agrees on {len(fixtures)} vectors.")
+    print(f"Independent encoder agrees on {len(fixtures)} grids, covering all 64 parity basis vectors.")
 
     grid = reference_grid(payload)
     legacy = run(executable, "encode", payload)
@@ -187,6 +267,8 @@ def main():
         (args.output_dir / "five-rows-erased.bgr").write_bytes(erase_rows(grid, 0, 5))
         (args.output_dir / "original.bin").write_bytes(payload)
 
+    if args.demo_svg:
+        write_demo_svg(executable, args.demo_svg)
 
 if __name__ == "__main__":
     main()

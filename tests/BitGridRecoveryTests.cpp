@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cstring>
 #include <iostream>
+#include <random>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -105,10 +106,13 @@ void testRejectionAndIntegrity()
     flipCell(damaged, rowStart(3, 2));
     expect(matches(BitGridCodec::recover(damaged), CodecError::InconsistentSymbols), "unmarked bit substitution");
 
-    for (std::size_t row = 8; row < 12; ++row)
+    for (std::size_t row = 8; row < 11; ++row)
     {
         maskRow(damaged, row, 2);
     }
+    expect(matches(BitGridCodec::recover(damaged), CodecError::InconsistentSymbols),
+           "one wrong retained symbol with three erasures");
+    maskRow(damaged, 11, 2);
     expect(matches(BitGridCodec::recover(damaged), CodecError::ChecksumMismatch),
            "CRC detects changed payload when none of the parity symbols survive");
 
@@ -254,6 +258,59 @@ void testSizeLimitsAndBands()
         }
     }
 }
+
+void testIndependentColumnMasks()
+{
+    constexpr std::size_t columns = 32;
+    std::mt19937 random(0xb6721u);
+    for (std::size_t trial = 0; trial < 32; ++trial)
+    {
+        const auto bands = 2 + trial % 3;
+        std::string payload((bands - 1) * 256 + 1 + random() % 246, '\0');
+        for (auto &byte : payload)
+        {
+            const auto value = static_cast<unsigned char>(random() & 0xffu);
+            std::memcpy(&byte, &value, 1);
+        }
+
+        const auto protectedGrid = BitGridCodec::protect(payload);
+        const auto *grid = std::get_if<std::string>(&protectedGrid);
+        if (!grid || grid->size() != (12 * bands + 2) * (16 * columns + 3))
+        {
+            expect(false, "encode a grid with the expected number of bands");
+            continue;
+        }
+
+        std::string damaged(*grid);
+        const bool exceedsBudget = trial % 2 != 0;
+        const auto excessColumn = random() % columns;
+        for (std::size_t band = 0; band < bands; ++band)
+        {
+            for (std::size_t column = 0; column < columns; ++column)
+            {
+                const bool overBudget = exceedsBudget && band + 1 == bands && column == excessColumn;
+                const auto count = overBudget ? 5u : random() % 5;
+                unsigned selected = 0;
+                for (unsigned erased = 0; erased < count;)
+                {
+                    const auto row = random() % 12;
+                    const auto mask = 1u << row;
+                    if ((selected & mask) != 0)
+                    {
+                        continue;
+                    }
+                    selected |= mask;
+                    const auto offset = rowStart(12 * band + row, columns) + 16 * column + 2 * (random() % 8);
+                    damaged.replace(offset, 2, "??");
+                    ++erased;
+                }
+            }
+        }
+        const auto result = BitGridCodec::recover(damaged);
+        expect(exceedsBudget ? matches(result, CodecError::TooManyErasures) : matches(result, payload),
+               "independent column masks in trial " + std::to_string(trial));
+    }
+}
 } // namespace
 
 int main()
@@ -262,5 +319,6 @@ int main()
     testRejectionAndIntegrity();
     testFraming();
     testSizeLimitsAndBands();
+    testIndependentColumnMasks();
     return failures == 0 ? 0 : 1;
 }

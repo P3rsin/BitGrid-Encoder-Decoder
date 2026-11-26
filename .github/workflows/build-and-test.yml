@@ -22,7 +22,8 @@ jobs:
           - name: Linux Clang Debug (ASan and UBSan)
             os: ubuntu-24.04
             config: Debug
-            options: -DCMAKE_CXX_COMPILER=clang++ -DBITGRID_ENABLE_SANITIZERS=ON
+            fuzz: true
+            options: -DCMAKE_CXX_COMPILER=clang++ -DBITGRID_ENABLE_SANITIZERS=ON -DBITGRID_ENABLE_FUZZING=ON
           - name: macOS AppleClang Release
             os: macos-15
             config: Release
@@ -47,4 +48,13 @@ jobs:
 
       - name: Run independent recovery experiment
         if: runner.os == 'Linux'
-        run: python3 tools/recovery_experiment.py build/bitgrid
+        run: |
+          python3 tools/recovery_experiment.py build/bitgrid --demo-svg build/recovery-demo.svg
+          cmp docs/recovery-demo.svg build/recovery-demo.svg
+
+      - name: Smoke test grid parser fuzz targets
+        if: matrix.fuzz
+        run: |
+          mkdir -p build/fuzz-corpus/habg build/fuzz-corpus/bgr1
+          build/bitgrid_fuzz_decode -runs=1000 build/fuzz-corpus/habg tests/fuzz/corpus/habg
+          build/bitgrid_fuzz_recover -runs=1000 build/fuzz-corpus/bgr1 tests/fuzz/corpus/bgr1

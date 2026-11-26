@@ -1,17 +1,19 @@
 cmake_minimum_required(VERSION 3.16)
 
-project(BitGridEncoderDecoder VERSION 1.0 LANGUAGES CXX)
+project(BitGridEncoderDecoder VERSION 1.1.0 LANGUAGES CXX)
 
 include(CTest)
 include(GNUInstallDirs)
 
 option(BITGRID_ENABLE_SANITIZERS "Enable AddressSanitizer and UndefinedBehaviorSanitizer" OFF)
+option(BITGRID_ENABLE_FUZZING "Build Clang libFuzzer targets for the two grid parsers" OFF)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-add_library(bitgrid_codec STATIC BitGridCodec.cpp BitGridCodec.h BitGridLayout.h BitGridRecovery.cpp)
+set(bitgrid_codec_sources BitGridCodec.cpp BitGridCodec.h BitGridLayout.h BitGridRecovery.cpp)
+add_library(bitgrid_codec STATIC ${bitgrid_codec_sources})
 target_include_directories(bitgrid_codec PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")
 target_compile_features(bitgrid_codec PUBLIC cxx_std_17)
 
@@ -69,4 +71,26 @@ if(BITGRID_ENABLE_SANITIZERS)
     foreach(target IN LISTS bitgrid_executables)
         target_link_options(${target} PRIVATE -fsanitize=address,undefined)
     endforeach()
+endif()
+
+if(BITGRID_ENABLE_FUZZING)
+    if(MSVC OR NOT CMAKE_CXX_COMPILER_ID MATCHES "^(Clang|AppleClang)$")
+        message(FATAL_ERROR "BITGRID_ENABLE_FUZZING requires Clang with GNU-style options and libFuzzer")
+    endif()
+
+    # Instrument a separate copy so the normal CLI and tests need no fuzzing runtime.
+    set(bitgrid_fuzz_flags -fsanitize=fuzzer-no-link,address,undefined
+        -fno-sanitize-recover=undefined -fno-omit-frame-pointer)
+    add_library(bitgrid_fuzz_codec STATIC ${bitgrid_codec_sources})
+    target_include_directories(bitgrid_fuzz_codec PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")
+    target_compile_options(bitgrid_fuzz_codec PRIVATE ${bitgrid_fuzz_flags})
+
+    foreach(parser IN ITEMS decode recover)
+        set(target bitgrid_fuzz_${parser})
+        add_executable(${target} tests/fuzz/GridParserFuzz.cpp)
+        target_link_libraries(${target} PRIVATE bitgrid_fuzz_codec)
+        target_compile_options(${target} PRIVATE ${bitgrid_fuzz_flags})
+        target_link_options(${target} PRIVATE -fsanitize=fuzzer,address,undefined)
+    endforeach()
+    target_compile_definitions(bitgrid_fuzz_recover PRIVATE BITGRID_FUZZ_RECOVER)
 endif()
